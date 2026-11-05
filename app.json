@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "Monitor de Queimadas Acessível - SNCT",
+    "slug": "monitor-queimadas-snct",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "monitorqueimadassnct",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F2F2F7",
+    "primaryColor": "#007AFF",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "br.gov.mcti.snct.monitorqueimadas"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F2F2F7"
+      },
+      "package": "br.gov.mcti.snct.monitorqueimadas"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "name": "Monitor de Queimadas Acessível - SNCT (Nordeste)",
+      "shortName": "Queimadas NE",
+      "lang": "pt-BR",
+      "scope": "/",
+      "themeColor": "#F2F2F7",
+      "backgroundColor": "#F2F2F7",
+      "display": "standalone",
+      "orientation": "any",
+      "description": "PWA acessível (Apple HIG para TDAH e TEA Nível 1) para monitoramento em tempo quase-real de focos de queimadas no Nordeste via CENSIPAM e INPE."
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
