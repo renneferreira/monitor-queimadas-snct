@@ -27,43 +27,50 @@ import {
   SyncMetadata,
   fetchSynchronizedFireData,
 } from './services/fireDataService';
+import {
+  AppLogoEmblem,
+  InstitutionalCreditsCard,
+} from './components/IosWeatherWidgets';
 
 /**
- * Tokens de Design — Apple Human Interface Guidelines (Calm Tech para TDAH e TEA Nível 1)
+ * Tokens de Design — Apple iOS 18 "Tempo" (Weather) Dark Glass & Orbital Telemetry
+ * Combina estética atmosférica em camadas translúcidas com previsibilidade espacial (CLS = 0.000).
  */
 export const APPLE_CALM_THEME = {
   colors: {
-    background: '#F2F2F7', // Cinza claro nativo iOS (reduz brilho e fadiga visual)
-    card: '#FFFFFF', // Isolamento limpo de conteúdo
-    border: '#E5E5EA',
-    textPrimary: '#1C1C1E',
-    textSecondary: '#48484A',
-    textMuted: '#636366',
-    appleBlue: '#007AFF',
-    appleBlueSoft: '#EBF4FF',
-    syncGreen: '#248A3D',
-    syncGreenSoft: '#E8F8EC',
-    severityModerado: '#D97706',
-    severityModeradoSoft: '#FEF3C7',
-    severityAlto: '#EA580C',
-    severityAltoSoft: '#FFEDD5',
-    severityCritico: '#C83E2B',
-    severityCriticoSoft: '#FEE2E2',
-    skeletonBase: '#E5E5EA',
-    skeletonHighlight: '#EBEBF0',
+    background: '#070C18', // Céu noturno orbital profundo (estilo App Tempo iOS)
+    card: 'rgba(18, 27, 48, 0.74)', // Dark Glass translúcido
+    cardSolid: '#111A2E',
+    border: 'rgba(255, 255, 255, 0.13)',
+    textPrimary: '#F8FAFC',
+    textSecondary: '#CBD5E1',
+    textMuted: '#94A3B8',
+    appleBlue: '#0A84FF',
+    appleBlueSoft: 'rgba(10, 132, 255, 0.20)',
+    appleCyan: '#64D2FF',
+    syncGreen: '#30D158',
+    syncGreenSoft: 'rgba(48, 209, 88, 0.16)',
+    severityModerado: '#FFD60A',
+    severityModeradoSoft: 'rgba(255, 214, 10, 0.16)',
+    severityAlto: '#FF9F0A',
+    severityAltoSoft: 'rgba(255, 159, 10, 0.18)',
+    severityCritico: '#FF453A',
+    severityCriticoSoft: 'rgba(255, 69, 58, 0.22)',
+    skeletonBase: 'rgba(255, 255, 255, 0.07)',
+    skeletonHighlight: 'rgba(255, 255, 255, 0.13)',
   },
   radius: {
-    card: 16,
-    control: 12,
+    card: 22,
+    control: 14,
     pill: 999,
   },
   fonts: {
     heading: Platform.select({
-      web: '"Lexend", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      web: '"Outfit", "Lexend", -apple-system, BlinkMacSystemFont, sans-serif',
       default: 'System',
     }),
     body: Platform.select({
-      web: '"Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      web: '"Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif',
       default: 'System',
     }),
     mono: Platform.select({
@@ -92,7 +99,12 @@ interface FireMonitorContextValue {
   skeletonLogs: SkeletonStabilityLog[];
   filterLogs: FilterEfficiencyLog[];
   selectUF: (uf: NordesteUF | 'TODOS', countClick?: boolean) => void;
-  selectMunicipality: (uf: NordesteUF, municipality: string, lat?: number, lng?: number) => void;
+  selectMunicipality: (
+    uf: NordesteUF,
+    municipality: string,
+    lat?: number,
+    lng?: number
+  ) => void;
   selectSpotOnMap: (spot: FireSpot | null) => void;
   setMapCamera: React.Dispatch<React.SetStateAction<MapCameraState>>;
   zoomIn: () => void;
@@ -100,7 +112,11 @@ interface FireMonitorContextValue {
   resetMapToNordeste: () => void;
   refreshNow: () => Promise<void>;
   registerFilterInteractionClick: () => void;
-  recordSkeletonMount: (screen: 'Mapa' | 'Consulta' | 'Sobre', leadMs: number, hydrationMs: number) => void;
+  recordSkeletonMount: (
+    screen: 'Mapa' | 'Consulta' | 'Sobre',
+    leadMs: number,
+    hydrationMs: number
+  ) => void;
 }
 
 const FireMonitorContext = createContext<FireMonitorContextValue | null>(null);
@@ -108,7 +124,9 @@ const FireMonitorContext = createContext<FireMonitorContextValue | null>(null);
 export function useFireMonitor(): FireMonitorContextValue {
   const ctx = useContext(FireMonitorContext);
   if (!ctx) {
-    throw new Error('useFireMonitor deve ser usado dentro de FireMonitorProvider');
+    throw new Error(
+      'useFireMonitor deve ser usado dentro de FireMonitorProvider'
+    );
   }
   return ctx;
 }
@@ -117,11 +135,12 @@ export default function RootLayout() {
   const [spots, setSpots] = useState<FireSpot[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedUF, setSelectedUF] = useState<NordesteUF | 'TODOS'>('TODOS');
-  const [selectedMunicipality, setSelectedMunicipality] = useState<string | null>(null);
+  const [selectedMunicipality, setSelectedMunicipality] = useState<
+    string | null
+  >(null);
   const [selectedSpot, setSelectedSpot] = useState<FireSpot | null>(null);
   const [mapCamera, setMapCamera] = useState<MapCameraState>(NORDESTE_CENTER);
 
-  // Contadores científicos para validação no artigo (SNCT)
   const [currentFilterClicks, setCurrentFilterClicks] = useState<number>(0);
   const filterStartTimeRef = useRef<number>(Date.now());
 
@@ -139,19 +158,19 @@ export default function RootLayout() {
 
   const [filterLogs, setFilterLogs] = useState<FilterEfficiencyLog[]>([
     {
-      id: 'baseline-snct-1',
+      id: 'baseline-ifpi-1',
       timestampISO: new Date(Date.now() - 180000).toISOString(),
-      targetUF: 'BA',
-      targetMunicipality: 'Barreiras',
+      targetUF: 'PI',
+      targetMunicipality: 'Uruçuí',
       clicksUsed: 2,
-      durationMs: 2840,
+      durationMs: 2180,
       withinTargetGoal: true,
     },
     {
-      id: 'baseline-snct-2',
+      id: 'baseline-ifpi-2',
       timestampISO: new Date(Date.now() - 95000).toISOString(),
-      targetUF: 'PE',
-      targetMunicipality: 'Petrolina',
+      targetUF: 'BA',
+      targetMunicipality: 'Barreiras',
       clicksUsed: 2,
       durationMs: 2410,
       withinTargetGoal: true,
@@ -170,23 +189,51 @@ export default function RootLayout() {
     censipamLatencyMinutes: 30,
   });
 
-  // Injeção de fontes Lexend, Plus Jakarta Sans e JetBrains Mono na Web (PWA)
+  // Injeção de Fontes Contrastantes (Outfit, Lexend, Plus Jakarta Sans, JetBrains Mono) + Gradiente Atmosférico iOS Weather na Web
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      const existing = document.getElementById('snct-calm-fonts');
+      const existing = document.getElementById('snct-ios-weather-fonts');
       if (!existing) {
         const link = document.createElement('link');
-        link.id = 'snct-calm-fonts';
+        link.id = 'snct-ios-weather-fonts';
         link.rel = 'stylesheet';
         link.href =
-          'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600&family=Lexend:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap';
+          'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&family=Lexend:wght@500;600;700&family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap';
         document.head.appendChild(link);
+      }
+
+      const existingStyle = document.getElementById('snct-ios-weather-glass-css');
+      if (!existingStyle) {
+        const styleEl = document.createElement('style');
+        styleEl.id = 'snct-ios-weather-glass-css';
+        styleEl.textContent = `
+          body, #root {
+            background: radial-gradient(circle at 50% 0%, #19294B 0%, #0B1325 48%, #050912 100%) !important;
+            color: #F8FAFC;
+          }
+          ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+          }
+          ::-webkit-scrollbar-track {
+            background: #070C18;
+          }
+          ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.18);
+            border-radius: 4px;
+          }
+        `;
+        document.head.appendChild(styleEl);
       }
     }
   }, []);
 
   const recordSkeletonMount = useCallback(
-    (screen: 'Mapa' | 'Consulta' | 'Sobre', leadMs: number, hydrationMs: number) => {
+    (
+      screen: 'Mapa' | 'Consulta' | 'Sobre',
+      leadMs: number,
+      hydrationMs: number
+    ) => {
       setSkeletonLogs((prev) => [
         {
           id: `skel-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -212,8 +259,9 @@ export default function RootLayout() {
 
       const [result] = await Promise.all([
         fetchSynchronizedFireData(),
-        // Reserva de tempo previsível para o Skeleton Loader antes dos dados brutos (TEA Nível 1)
-        new Promise((resolve) => setTimeout(resolve, withSkeletonDelay ? 420 : 120)),
+        new Promise((resolve) =>
+          setTimeout(resolve, withSkeletonDelay ? 420 : 120)
+        ),
       ]);
 
       setSpots(result.spots);
@@ -226,7 +274,6 @@ export default function RootLayout() {
     [recordSkeletonMount]
   );
 
-  // Ciclo inicial e sincronização automática a cada 10 minutos (INPE BDQueimadas)
   useEffect(() => {
     loadData(true);
     const syncInterval = setInterval(() => {
@@ -275,12 +322,14 @@ export default function RootLayout() {
   const selectMunicipality = useCallback(
     (uf: NordesteUF, municipality: string, lat?: number, lng?: number) => {
       const clicksUsed = Math.max(1, currentFilterClicks + 1);
-      const durationMs = Math.max(350, Date.now() - filterStartTimeRef.current);
+      const durationMs = Math.max(
+        350,
+        Date.now() - filterStartTimeRef.current
+      );
 
       setSelectedUF(uf);
       setSelectedMunicipality(municipality);
 
-      // Localiza foco correspondente para centralizar câmera do mapa com zoom de alta precisão
       const matchingSpots = spots.filter(
         (s) =>
           s.uf === uf &&
@@ -304,7 +353,6 @@ export default function RootLayout() {
         });
       }
 
-      // Registra log científico para validação do artigo (Meta: <= 3 cliques)
       setFilterLogs((prev) => [
         {
           id: `filter-${Date.now()}`,
@@ -318,7 +366,6 @@ export default function RootLayout() {
         ...prev.slice(0, 19),
       ]);
 
-      // Reinicia contador para o próximo ciclo de consulta
       setCurrentFilterClicks(0);
       filterStartTimeRef.current = Date.now();
     },
@@ -422,20 +469,36 @@ export default function RootLayout() {
   return (
     <FireMonitorContext.Provider value={contextValue}>
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar style="dark" backgroundColor={APPLE_CALM_THEME.colors.background} />
+        <StatusBar
+          style="light"
+          backgroundColor={APPLE_CALM_THEME.colors.background}
+        />
 
-        {/* COMPONENTE FIXO DE TRANSPARÊNCIA DE DADOS (Requisito Seção 2 do Documento Mestre) */}
+        {/* BARRA SUPERIOR DARK GLASS: LOGO + TRANSPARÊNCIA CENSIPAM/INPE + CRÉDITOS IFPI */}
         <View
           style={styles.transparencyBanner}
           accessibilityRole="header"
-          accessibilityLabel="Barra de transparência de dados CENSIPAM e INPE"
+          accessibilityLabel="Cabeçalho do Monitor Orbital de Queimadas - IFPI Campus Floriano Turma TDS-3"
         >
           <View style={styles.bannerTopRow}>
-            <View style={styles.sourceBadgeRow}>
-              <View style={styles.statusDot} />
-              <Text style={styles.transparencySourceText}>
-                Fonte: CENSIPAM / INPE | Atualização automática a cada 10-30 min
-              </Text>
+            <View style={styles.brandAndSourceRow}>
+              <AppLogoEmblem size={38} />
+              <View style={styles.brandTextCol}>
+                <View style={styles.brandTitleInline}>
+                  <Text style={styles.appBrandName}>PyroCast NE</Text>
+                  <View style={styles.ifpiHeaderBadge}>
+                    <Text style={styles.ifpiHeaderBadgeText}>
+                      IFPI • Campus Floriano • TDS-3
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.sourceBadgeRow}>
+                  <View style={styles.statusDot} />
+                  <Text style={styles.transparencySourceText}>
+                    Fonte: CENSIPAM / INPE | Atualização automática a cada 10-30 min
+                  </Text>
+                </View>
+              </View>
             </View>
 
             <Pressable
@@ -456,6 +519,9 @@ export default function RootLayout() {
           </View>
         </View>
 
+        {/* FAIXA COMPACTA DE AUTORIA INSTITUCIONAL (IFPI CAMPUS FLORIANO • TDS-3 • PROF. RENNÊ SANTOS) */}
+        <InstitutionalCreditsCard compact />
+
         <View style={styles.contentContainer}>
           <Stack screenOptions={{ headerShown: false }} />
         </View>
@@ -470,7 +536,7 @@ const styles = StyleSheet.create({
     backgroundColor: APPLE_CALM_THEME.colors.background,
   },
   transparencyBanner: {
-    backgroundColor: APPLE_CALM_THEME.colors.card,
+    backgroundColor: 'rgba(11, 18, 34, 0.88)',
     borderBottomWidth: 1,
     borderBottomColor: APPLE_CALM_THEME.colors.border,
     paddingHorizontal: 16,
@@ -481,33 +547,71 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     flexWrap: 'wrap',
+    gap: 10,
+  },
+  brandAndSourceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flexShrink: 1,
+  },
+  brandTextCol: {
+    flexShrink: 1,
+    gap: 2,
+  },
+  brandTitleInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 8,
+  },
+  appBrandName: {
+    fontFamily: APPLE_CALM_THEME.fonts.heading,
+    fontSize: 16,
+    fontWeight: '800',
+    color: APPLE_CALM_THEME.colors.textPrimary,
+    letterSpacing: -0.3,
+  },
+  ifpiHeaderBadge: {
+    backgroundColor: 'rgba(48, 209, 88, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(48, 209, 88, 0.36)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  ifpiHeaderBadgeText: {
+    fontFamily: APPLE_CALM_THEME.fonts.mono,
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#30D158',
   },
   sourceBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     flexShrink: 1,
   },
   statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: APPLE_CALM_THEME.colors.syncGreen,
   },
   transparencySourceText: {
     fontFamily: APPLE_CALM_THEME.fonts.body,
-    fontSize: 13,
-    fontWeight: '600',
-    color: APPLE_CALM_THEME.colors.textPrimary,
-    letterSpacing: -0.1,
+    fontSize: 12,
+    fontWeight: '500',
+    color: APPLE_CALM_THEME.colors.textSecondary,
   },
   syncButton: {
-    minHeight: 34,
-    paddingHorizontal: 12,
+    minHeight: 36,
+    paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: APPLE_CALM_THEME.radius.pill,
     backgroundColor: APPLE_CALM_THEME.colors.appleBlueSoft,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 210, 255, 0.32)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -516,12 +620,12 @@ const styles = StyleSheet.create({
   },
   syncTimestampText: {
     fontFamily: APPLE_CALM_THEME.fonts.mono,
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '600',
-    color: APPLE_CALM_THEME.colors.appleBlue,
+    color: APPLE_CALM_THEME.colors.appleCyan,
   },
   contentContainer: {
     flex: 1,
-    backgroundColor: APPLE_CALM_THEME.colors.background,
+    backgroundColor: 'transparent',
   },
 });

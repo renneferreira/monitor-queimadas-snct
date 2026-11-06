@@ -260,7 +260,19 @@ const NORDESTE_MUNICIPALITY_SEEDS: ReferenceMunicipalitySeed[] = [
     ],
   },
 
-  // PIAUÍ (PI)
+  // PIAUÍ (PI) — Destaque sede do projeto: IFPI Campus Floriano
+  {
+    id: 2203909,
+    nome: 'Floriano',
+    uf: 'PI',
+    latitude: -6.7669,
+    longitude: -43.0225,
+    biome: 'Cerrado',
+    spotsSeed: [
+      { latOffset: 0.03, lngOffset: -0.04, satellite: 'AQUA_M-T', source: 'INPE_BDQUEIMADAS', frpMW: 58.4, fireRiskIndex: 0.93, daysWithoutRain: 24, minutesAgo: 3, confidencePercent: 97 },
+      { latOffset: -0.04, lngOffset: 0.03, satellite: 'NOAA-20', source: 'CENSIPAM_PAINEL_DO_FOGO', frpMW: 46.2, fireRiskIndex: 0.89, daysWithoutRain: 24, minutesAgo: 15, confidencePercent: 93 },
+    ],
+  },
   {
     id: 2211209,
     nome: 'Uruçuí',

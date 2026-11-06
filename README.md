@@ -1,50 +1,57 @@
-# Monitor de Queimadas Acessível — SNCT (Foco: Região Nordeste)
+# PyroCast NE — Monitor de Queimadas Acessível (SNCT)
 
-Aplicativo Progressive Web App (PWA) desenvolvido em **React Native com Expo Router**, projetado segundo o **Apple Human Interface Guidelines (HIG)** com adaptações de acessibilidade cognitiva para **TDAH e TEA Nível 1**, destinado à apresentação e avaliação científica na **Semana Nacional de Ciência e Tecnologia (SNCT / MCTI)**.
+<p align="center">
+  <img src="./public/logo-app-ifpi.png" alt="Logo PyroCast NE - IFPI Campus Floriano" width="140" style="border-radius: 32px;" />
+</p>
+
+> **Projeto Institucional:** **IFPI — Campus Floriano** (Instituto Federal do Piauí)  
+> **Desenvolvimento:** **Turma TDS-3** (Técnico em Desenvolvimento de Sistemas)  
+> **Supervisão e Orientação:** **Prof. Rennê Santos**  
+> **Evento:** Semana Nacional de Ciência e Tecnologia (**SNCT / MCTI**)
 
 ---
 
-## 1. Estrutura Modular do Projeto
+## 1. Visão Geral & Design System (Estilo App *Tempo* do iOS • Dark Glass)
+
+O **PyroCast NE** é um *Progressive Web App* (PWA) construído em **React Native com Expo Router**, projetado sob a estética **Apple iOS 18 Weather (*App Tempo*) Dark Glass** combinada com diretrizes de **acessibilidade cognitiva para TDAH e TEA Nível 1** (`CLS = 0.000` e isolamento municipal em `<= 3 cliques`).
+
+### Destaques Visuais e Gráficos com Gradiente:
+1. **Hero Atmosférico estilo App Tempo do iOS:** Exibição central de alto impacto com contagem orbital ativa, potência radiativa máxima (FRP em MW), resumo de severidade por bioma e filtro imediato para os 9 estados do Nordeste (`MA`, `PI`, `CE`, `RN`, `PB`, `PE`, `AL`, `SE`, `BA`), com destaque para **Floriano (PI)**.
+2. **Curva Horária de Potência Radiativa (`FrpOrbitalAreaChart`):** Gráfico vetorial em curva de Bézier cúbica com preenchimento em gradiente térmico (`#FF453A` → `#FF9F0A` → transparente) mapeando as janelas orbitais de 10 a 30 minutos dos satélites `AQUA_M-T`, `NOAA-20`, `GOES-16`, `NPP-SUOMI` e `TERRA`.
+3. **Barras de Amplitude Térmica por Estado (`StateThermalRangeBars`):** Inspirado na "Previsão de 10 Dias" do app Tempo do iOS, exibe cápsulas horizontais em gradiente multicolorido (`#30D158` → `#FFD60A` → `#FF9F0A` → `#FF453A`) comparando FRP mínimo e máximo de cada UF.
+4. **Bento Grid Ambiental (`BentoEnvironmentalWidgets`):** Medidor de espectro contínuo de Risco de Ignição (estilo Índice UV / Qualidade do Ar da Apple) e distribuição proporcional por bioma (*Caatinga*, *Cerrado MATOPIBA* e *Mata Atlântica*).
+5. **Radar Cartográfico Dark Glass:** Mapa vetorial interativo do Nordeste com halos térmicos em `<RadialGradient>`, clusterização limpa e controles de zoom acessíveis (`>= 48x48 dp`).
+
+---
+
+## 2. Estrutura Modular do Projeto
 
 ```text
 /
-├── app.json                   # Configuração PWA, tema #F2F2F7 e metadados SNCT
-├── package.json               # Dependências Expo Router, React Native Web e SVG
-├── tsconfig.json              # Configuração TypeScript estrita
+├── app.json                             # Metadados PWA Dark Glass, ícone e identidade IFPI TDS-3
+├── package.json                         # Dependências Expo Router, React Native Web e SVG
 ├── public/
-│   └── preview-snct.html      # Versão interativa standalone (abre direto no navegador sem build)
+│   ├── logo-app-ifpi.png                # Logo oficial 3D Dark Glass gerada para o app
+│   └── preview-snct.html                # Versão standalone para apresentação offline
 └── app/
-    ├── _layout.tsx            # Provedor global, Tema Apple (#F2F2F7) e Barra Fixa CENSIPAM/INPE
+    ├── _layout.tsx                      # Tema Dark Glass (#070C18), Barra CENSIPAM/INPE e Faixa IFPI
+    ├── components/
+    │   └── IosWeatherWidgets.tsx        # Gráficos com gradiente (Curva FRP, Barras UF, Bento, Logo e Créditos)
     ├── (tabs)/
-    │   ├── _layout.tsx        # Navegação inferior por abas (Mapa, Consulta, Info & Artigo)
-    │   ├── index.tsx          # Tela do Mapa Interativo com Foco no Nordeste e Clusters Limpos
-    │   ├── consulta.tsx       # Filtros por UF (Segmented Control) e Cidade (API IBGE em <= 3 cliques)
-    │   └── sobre.tsx          # Transparência das fontes (CENSIPAM/INPE) e Logs do Artigo Científico
+    │   ├── _layout.tsx                  # Tab Bar translúcida Dark Glass
+    │   ├── index.tsx                    # Radar Nordeste + Hero Clima Fogo + Gráficos iOS Weather
+    │   ├── consulta.tsx                 # Isolamento por UF e Município (API IBGE em <= 3 cliques)
+    │   └── sobre.tsx                    # Créditos IFPI Campus Floriano (TDS-3 / Prof. Rennê Santos) e Artigo SNCT
     └── services/
-        └── fireDataService.ts # Camada HTTP (INPE 10m / CENSIPAM 30m / API IBGE) e Clusterização
+        └── fireDataService.ts           # Integração INPE (10m), CENSIPAM (30m), IBGE e Clusterização
 ```
 
 ---
 
-## 2. Como Executar
+## 3. Como Executar Localmente
 
-### Opção A — Executar via Expo Router (PWA / Mobile)
 ```bash
-cd "C:\Users\PC\.gemini\antigravity\scratch\monitor-queimadas-snct"
 npm install
 npm run web
 ```
-
-### Opção B — Visualização Imediata (Zero Build / Apresentação Offline SNCT)
-Abra diretamente no navegador o arquivo:
-`C:\Users\PC\.gemini\antigravity\scratch\monitor-queimadas-snct\public\preview-snct.html`
-
----
-
-## 3. Diretrizes de Acessibilidade Cognitiva Implementadas (TDAH & TEA Nível 1)
-
-1. **Fundo Previsível (`#F2F2F7`):** Reduz o brilho e a fadiga visual em comparação ao branco puro.
-2. **Contraste e Isolamento (`#FFFFFF`, `borderRadius: 16`):** Agrupamento semântico de informações com baixo ruído sensorial.
-3. **Indicação Temporal Clara (Cabeçalho Fixo):** Exibe permanentemente `"Fonte: CENSIPAM / INPE | Atualização automática a cada 10-30 min"` e o horário exato da última sincronização em azul Apple (`#007AFF`).
-4. **Estabilidade Visual (`CLS = 0.000`):** *Skeleton Loaders* de dimensões fixas antecedem os dados brutos.
-5. **Isolamento Municipal em $\le 3$ Cliques:** Seleção direta de UF (9 estados do Nordeste) + Município (integrado à API do IBGE) com zoom síncrono no mapa.
+Acesse no navegador: **http://localhost:8081**

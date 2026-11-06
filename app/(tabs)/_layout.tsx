@@ -7,18 +7,17 @@ import { APPLE_CALM_THEME, useFireMonitor } from '../_layout';
 export default function TabsLayout() {
   const { selectedUF, selectedMunicipality } = useFireMonitor();
 
-  const filterBadge =
-    selectedMunicipality
+  const filterBadge = selectedMunicipality
+    ? selectedUF
+    : selectedUF !== 'TODOS'
       ? selectedUF
-      : selectedUF !== 'TODOS'
-        ? selectedUF
-        : undefined;
+      : undefined;
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: APPLE_CALM_THEME.colors.appleBlue,
+        tabBarActiveTintColor: APPLE_CALM_THEME.colors.appleCyan,
         tabBarInactiveTintColor: APPLE_CALM_THEME.colors.textMuted,
         tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.tabBarLabel,
@@ -28,11 +27,12 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Mapa Nordeste',
-          tabBarAccessibilityLabel: 'Aba Mapa Interativo do Nordeste',
+          title: 'Radar & Clima Fogo',
+          tabBarAccessibilityLabel:
+            'Aba Radar Orbital e Gráficos Estilo App Tempo iOS',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? 'map' : 'map-outline'}
+              name={focused ? 'partly-sunny' : 'partly-sunny-outline'}
               size={22}
               color={color}
             />
@@ -45,10 +45,11 @@ export default function TabsLayout() {
           title: 'Consulta (UF/Cidade)',
           tabBarBadge: filterBadge,
           tabBarBadgeStyle: styles.badge,
-          tabBarAccessibilityLabel: 'Aba Consulta Seletiva por Estado e Cidade',
+          tabBarAccessibilityLabel:
+            'Aba Consulta Seletiva por Estado e Cidade em até 3 cliques',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? 'options' : 'options-outline'}
+              name={focused ? 'compass' : 'compass-outline'}
               size={22}
               color={color}
             />
@@ -58,8 +59,9 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="sobre"
         options={{
-          title: 'Info & Artigo SNCT',
-          tabBarAccessibilityLabel: 'Aba Transparência das Fontes e Validação Científica',
+          title: 'IFPI • TDS-3 & Artigo',
+          tabBarAccessibilityLabel:
+            'Aba Créditos IFPI Campus Floriano Turma TDS-3 e Validação Científica SNCT',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'shield-checkmark' : 'shield-checkmark-outline'}
@@ -75,16 +77,16 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: APPLE_CALM_THEME.colors.card,
+    backgroundColor: 'rgba(9, 15, 29, 0.94)',
     borderTopWidth: 1,
     borderTopColor: APPLE_CALM_THEME.colors.border,
-    height: 68,
+    height: 70,
     paddingTop: 6,
-    paddingBottom: 8,
+    paddingBottom: 9,
     elevation: 0,
   },
   tabBarItem: {
-    minHeight: 48, // Garante área de clique >= 44x44 dp (Apple HIG)
+    minHeight: 48,
   },
   tabBarLabel: {
     fontFamily: APPLE_CALM_THEME.fonts.body,

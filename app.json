@@ -1,35 +1,38 @@
 {
   "expo": {
-    "name": "Monitor de Queimadas Acessível - SNCT",
+    "name": "PyroCast NE — Monitor de Queimadas (IFPI Floriano • TDS-3)",
     "slug": "monitor-queimadas-snct",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "scheme": "monitorqueimadassnct",
-    "userInterfaceStyle": "light",
-    "backgroundColor": "#F2F2F7",
-    "primaryColor": "#007AFF",
+    "userInterfaceStyle": "dark",
+    "icon": "./public/logo-app-ifpi.png",
+    "backgroundColor": "#070C18",
+    "primaryColor": "#0A84FF",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "br.gov.mcti.snct.monitorqueimadas"
+      "bundleIdentifier": "br.edu.ifpi.floriano.tds3.monitorqueimadas"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#F2F2F7"
+        "foregroundImage": "./public/logo-app-ifpi.png",
+        "backgroundColor": "#070C18"
       },
-      "package": "br.gov.mcti.snct.monitorqueimadas"
+      "package": "br.edu.ifpi.floriano.tds3.monitorqueimadas"
     },
     "web": {
       "bundler": "metro",
       "output": "single",
-      "name": "Monitor de Queimadas Acessível - SNCT (Nordeste)",
-      "shortName": "Queimadas NE",
+      "favicon": "./public/logo-app-ifpi.png",
+      "name": "PyroCast NE — Monitor de Queimadas (IFPI Campus Floriano • TDS-3)",
+      "shortName": "PyroCast IFPI",
       "lang": "pt-BR",
       "scope": "/",
-      "themeColor": "#F2F2F7",
-      "backgroundColor": "#F2F2F7",
+      "themeColor": "#070C18",
+      "backgroundColor": "#070C18",
       "display": "standalone",
       "orientation": "any",
-      "description": "PWA acessível (Apple HIG para TDAH e TEA Nível 1) para monitoramento em tempo quase-real de focos de queimadas no Nordeste via CENSIPAM e INPE."
+      "description": "Projeto do IFPI - Campus Floriano desenvolvido pela Turma TDS-3 sob supervisão do Prof. Rennê Santos. PWA Dark Glass estilo App Tempo do iOS para monitoramento orbital de queimadas no Nordeste (INPE/CENSIPAM)."
     },
     "plugins": [
       "expo-router"

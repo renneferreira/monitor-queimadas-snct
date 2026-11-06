@@ -18,6 +18,7 @@ import {
   fetchIBGEMunicipalitiesByUF,
   normalizeSearchText,
 } from '../services/fireDataService';
+import { InstitutionalCreditsCard } from '../components/IosWeatherWidgets';
 
 export default function ConsultaSeletivaScreen() {
   const router = useRouter();
@@ -33,7 +34,8 @@ export default function ConsultaSeletivaScreen() {
     recordSkeletonMount,
   } = useFireMonitor();
 
-  const activeUF: NordesteUF = selectedUF === 'TODOS' ? 'BA' : selectedUF;
+  // Padrão inicial em PI (Piauí — sede do IFPI Campus Floriano) quando UF está em TODOS
+  const activeUF: NordesteUF = selectedUF === 'TODOS' ? 'PI' : selectedUF;
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [ibgeList, setIbgeList] = useState<IBGEMunicipality[]>([]);
   const [isLoadingIBGE, setIsLoadingIBGE] = useState<boolean>(false);
@@ -47,7 +49,7 @@ export default function ConsultaSeletivaScreen() {
 
       const [res] = await Promise.all([
         fetchIBGEMunicipalitiesByUF(activeUF),
-        new Promise((r) => setTimeout(r, 260)), // Skeleton estável antes dos dados brutos
+        new Promise((r) => setTimeout(r, 260)),
       ]);
 
       if (!isMounted) return;
@@ -63,7 +65,6 @@ export default function ConsultaSeletivaScreen() {
     };
   }, [activeUF, recordSkeletonMount]);
 
-  // Mapa de contagem de focos por município na UF ativa
   const spotCountByMuni = useMemo(() => {
     const map = new Map<string, FireSpot[]>();
     for (const s of spots) {
@@ -76,7 +77,6 @@ export default function ConsultaSeletivaScreen() {
     return map;
   }, [spots, activeUF]);
 
-  // Lista filtrada de municípios (sem autocompletar intrusivo, ordenando municípios com focos primeiro)
   const filteredMunicipalities = useMemo(() => {
     const q = normalizeSearchText(searchQuery);
     const matches = ibgeList.filter((m) => {
@@ -86,15 +86,16 @@ export default function ConsultaSeletivaScreen() {
 
     return matches
       .sort((a, b) => {
-        const countA = spotCountByMuni.get(normalizeSearchText(a.nome))?.length ?? 0;
-        const countB = spotCountByMuni.get(normalizeSearchText(b.nome))?.length ?? 0;
+        const countA =
+          spotCountByMuni.get(normalizeSearchText(a.nome))?.length ?? 0;
+        const countB =
+          spotCountByMuni.get(normalizeSearchText(b.nome))?.length ?? 0;
         if (countB !== countA) return countB - countA;
         return a.nome.localeCompare(b.nome, 'pt-BR');
       })
       .slice(0, 18);
   }, [ibgeList, searchQuery, spotCountByMuni]);
 
-  // Focos locais do município selecionado
   const localMunicipalitySpots = useMemo(() => {
     if (!selectedMunicipality) return [];
     return spots.filter(
@@ -130,7 +131,7 @@ export default function ConsultaSeletivaScreen() {
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
-      {/* PASSO 1: SELEÇÃO POR ESTADO (UF) — SEGMENTED CONTROL iOS */}
+      {/* PASSO 1: SELEÇÃO POR ESTADO (UF) — SEGMENTED CONTROL DARK GLASS */}
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>
           <View>
@@ -143,11 +144,7 @@ export default function ConsultaSeletivaScreen() {
           </View>
 
           <View style={styles.clickCounterPill}>
-            <Ionicons
-              name="analytics-outline"
-              size={15}
-              color={APPLE_CALM_THEME.colors.appleBlue}
-            />
+            <Ionicons name="analytics-outline" size={15} color="#64D2FF" />
             <Text style={styles.clickCounterText}>
               Cliques na sessão: {currentFilterClicks} (Meta ≤ 3)
             </Text>
@@ -214,7 +211,7 @@ export default function ConsultaSeletivaScreen() {
         <View style={styles.cardHeaderRow}>
           <View style={styles.flexOne}>
             <Text style={styles.stepEyebrow}>
-              PASSO 2 DE 2 • SELEÇÃO POR MUNICÍPIO (IBGE)
+              PASSO 2 DE 2 • SELEÇÃO POR MUNICÍPIO (API IBGE)
             </Text>
             <Text style={styles.cardTitle}>
               Municípios de{' '}
@@ -231,23 +228,18 @@ export default function ConsultaSeletivaScreen() {
           </View>
         </View>
 
-        {/* Caixa de busca preditiva e simplificada (sem popups ou autocomplete intrusivo) */}
         <View style={styles.searchInputWrapper}>
-          <Ionicons
-            name="search-outline"
-            size={20}
-            color={APPLE_CALM_THEME.colors.textMuted}
-          />
+          <Ionicons name="search-outline" size={20} color="#64D2FF" />
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder={`Digite o nome da cidade em ${activeUF} (ex: ${
-              activeUF === 'BA'
-                ? 'Barreiras'
-                : activeUF === 'PE'
-                  ? 'Petrolina'
-                  : activeUF === 'MA'
-                    ? 'Balsas'
+            placeholder={`Digite a cidade em ${activeUF} (ex: ${
+              activeUF === 'PI'
+                ? 'Floriano ou Uruçuí'
+                : activeUF === 'BA'
+                  ? 'Barreiras'
+                  : activeUF === 'PE'
+                    ? 'Petrolina'
                     : 'filtrar município'
             })...`}
             placeholderTextColor={APPLE_CALM_THEME.colors.textMuted}
@@ -272,7 +264,6 @@ export default function ConsultaSeletivaScreen() {
           ) : null}
         </View>
 
-        {/* SKELETON LOADERS ESTÁVEIS ANTES DOS DADOS BRUTOS DO IBGE */}
         {isLoadingIBGE ? (
           <View
             style={styles.skeletonListContainer}
@@ -312,6 +303,9 @@ export default function ConsultaSeletivaScreen() {
                       ]}
                     >
                       {muni.nome}
+                      {muni.nome === 'Floriano' && muni.uf === 'PI'
+                        ? '  •  Sede IFPI TDS-3'
+                        : ''}
                     </Text>
                     <Text
                       style={[
@@ -343,7 +337,9 @@ export default function ConsultaSeletivaScreen() {
                     >
                       {hasActiveFire
                         ? `${muniSpots.length} ${
-                            muniSpots.length === 1 ? 'foco ativo' : 'focos ativos'
+                            muniSpots.length === 1
+                              ? 'foco ativo'
+                              : 'focos ativos'
                           }`
                         : 'Sem focos'}
                     </Text>
@@ -360,7 +356,7 @@ export default function ConsultaSeletivaScreen() {
         <View style={styles.reportHeaderRow}>
           <View style={styles.flexOne}>
             <Text style={styles.stepEyebrow}>
-              RELATÓRIO DE ISOLAMENTO MUNICIPAL • SÍNCRONO COM O MAPA
+              RELATÓRIO DE ISOLAMENTO MUNICIPAL • SÍNCRONO COM O RADAR
             </Text>
             <Text style={styles.cardTitle}>
               {selectedMunicipality
@@ -377,11 +373,11 @@ export default function ConsultaSeletivaScreen() {
                 pressed && styles.btnPressed,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Abrir mapa com zoom aplicado neste município"
+              accessibilityLabel="Abrir radar com zoom aplicado neste município"
             >
               <Ionicons name="locate" size={18} color="#FFFFFF" />
               <Text style={styles.primaryMapActionText}>
-                Ver no Mapa com Zoom
+                Ver no Radar com Zoom
               </Text>
             </Pressable>
           ) : null}
@@ -389,11 +385,7 @@ export default function ConsultaSeletivaScreen() {
 
         {lastEfficiencyLog && selectedMunicipality ? (
           <View style={styles.validationFeedbackBox}>
-            <Ionicons
-              name="checkmark-circle"
-              size={18}
-              color={APPLE_CALM_THEME.colors.syncGreen}
-            />
+            <Ionicons name="checkmark-circle" size={18} color="#30D158" />
             <Text style={styles.validationFeedbackText}>
               Isolamento municipal concluído em{' '}
               <Text style={styles.validationBold}>
@@ -437,7 +429,7 @@ export default function ConsultaSeletivaScreen() {
                     accessibilityRole="button"
                   >
                     <Text style={styles.spotZoomLinkText}>
-                      Centralizar exatamente neste foco no Mapa →
+                      Centralizar exatamente neste foco no Radar →
                     </Text>
                   </Pressable>
                 </View>
@@ -447,16 +439,18 @@ export default function ConsultaSeletivaScreen() {
             <Text style={styles.calmEmptyReport}>
               Nenhum foco de calor detectado pelos satélites INPE/CENSIPAM para{' '}
               {selectedMunicipality} ({activeUF}) na última janela de 10-30
-              minutos. A câmera do mapa já foi posicionada sobre o município.
+              minutos. A câmera do radar já foi posicionada sobre o município.
             </Text>
           )
         ) : (
           <Text style={styles.calmEmptyReport}>
-            Toque em qualquer cidade acima para visualizar imediatamente o
-            relatório de focos locais e aplicar o zoom automático no mapa.
+            Toque em qualquer cidade acima (ex: Floriano em PI) para visualizar
+            imediatamente o relatório de focos locais e aplicar o zoom no radar.
           </Text>
         )}
       </View>
+
+      <InstitutionalCreditsCard />
     </ScrollView>
   );
 }
@@ -464,12 +458,12 @@ export default function ConsultaSeletivaScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: APPLE_CALM_THEME.colors.background,
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     padding: 16,
     gap: 16,
-    paddingBottom: 32,
+    paddingBottom: 34,
   },
   flexOne: {
     flex: 1,
@@ -477,7 +471,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: APPLE_CALM_THEME.colors.card,
     borderRadius: APPLE_CALM_THEME.radius.card,
-    padding: 16,
+    padding: 18,
     borderWidth: 1,
     borderColor: APPLE_CALM_THEME.colors.border,
   },
@@ -492,14 +486,14 @@ const styles = StyleSheet.create({
   stepEyebrow: {
     fontFamily: APPLE_CALM_THEME.fonts.mono,
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     color: APPLE_CALM_THEME.colors.textMuted,
     letterSpacing: 0.4,
     marginBottom: 4,
   },
   cardTitle: {
     fontFamily: APPLE_CALM_THEME.fonts.heading,
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '700',
     color: APPLE_CALM_THEME.colors.textPrimary,
   },
@@ -507,7 +501,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: APPLE_CALM_THEME.colors.appleBlueSoft,
+    backgroundColor: 'rgba(10, 132, 255, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 210, 255, 0.35)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: APPLE_CALM_THEME.radius.pill,
@@ -516,7 +512,7 @@ const styles = StyleSheet.create({
     fontFamily: APPLE_CALM_THEME.fonts.mono,
     fontSize: 12,
     fontWeight: '600',
-    color: APPLE_CALM_THEME.colors.appleBlue,
+    color: '#64D2FF',
   },
   ufSegmentedGrid: {
     flexDirection: 'row',
@@ -525,23 +521,23 @@ const styles = StyleSheet.create({
   },
   ufButton: {
     minWidth: 96,
-    minHeight: 68, // Área de toque ampla (> 44x44 dp)
+    minHeight: 72,
     flexGrow: 1,
     flexBasis: '30%',
-    backgroundColor: APPLE_CALM_THEME.colors.background,
-    borderRadius: 12,
-    padding: 10,
+    backgroundColor: 'rgba(9, 14, 28, 0.62)',
+    borderRadius: 14,
+    padding: 11,
     borderWidth: 1,
-    borderColor: APPLE_CALM_THEME.colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'space-between',
   },
   ufButtonActive: {
-    backgroundColor: APPLE_CALM_THEME.colors.appleBlue,
-    borderColor: APPLE_CALM_THEME.colors.appleBlue,
+    backgroundColor: '#0A84FF',
+    borderColor: '#64D2FF',
   },
   ufSiglaText: {
     fontFamily: APPLE_CALM_THEME.fonts.heading,
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '700',
     color: APPLE_CALM_THEME.colors.textPrimary,
   },
@@ -556,26 +552,26 @@ const styles = StyleSheet.create({
   },
   ufCountBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#E5E5EA',
+    backgroundColor: 'rgba(255, 255, 255, 0.10)',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 999,
     marginTop: 4,
   },
   ufCountBadgeActive: {
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(255, 255, 255, 0.24)',
   },
   ufCountText: {
     fontFamily: APPLE_CALM_THEME.fonts.mono,
     fontSize: 11,
     fontWeight: '600',
-    color: APPLE_CALM_THEME.colors.textPrimary,
+    color: '#CBD5E1',
   },
   ufCountTextActive: {
     color: '#FFFFFF',
   },
   ibgeStatusChip: {
-    backgroundColor: APPLE_CALM_THEME.colors.background,
+    backgroundColor: 'rgba(9, 14, 28, 0.6)',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
@@ -586,14 +582,14 @@ const styles = StyleSheet.create({
     fontFamily: APPLE_CALM_THEME.fonts.mono,
     fontSize: 11,
     fontWeight: '600',
-    color: APPLE_CALM_THEME.colors.textSecondary,
+    color: '#64D2FF',
   },
   searchInputWrapper: {
-    minHeight: 48,
-    backgroundColor: APPLE_CALM_THEME.colors.background,
-    borderRadius: 12,
+    minHeight: 50,
+    backgroundColor: 'rgba(9, 14, 28, 0.72)',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: APPLE_CALM_THEME.colors.border,
+    borderColor: 'rgba(100, 210, 255, 0.28)',
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
@@ -618,36 +614,36 @@ const styles = StyleSheet.create({
   },
   skeletonCityRow: {
     height: 58,
-    borderRadius: 12,
+    borderRadius: 14,
     backgroundColor: APPLE_CALM_THEME.colors.skeletonBase,
   },
   cityGrid: {
     gap: 8,
   },
   cityRowButton: {
-    minHeight: 58, // Estritamente >= 44x44 dp
-    borderRadius: 12,
+    minHeight: 60,
+    borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    backgroundColor: APPLE_CALM_THEME.colors.background,
+    backgroundColor: 'rgba(9, 14, 28, 0.56)',
     borderWidth: 1,
-    borderColor: APPLE_CALM_THEME.colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: 10,
   },
   cityRowButtonActive: {
-    backgroundColor: APPLE_CALM_THEME.colors.appleBlue,
-    borderColor: APPLE_CALM_THEME.colors.appleBlue,
+    backgroundColor: '#0A84FF',
+    borderColor: '#64D2FF',
   },
   cityInfoCol: {
     flex: 1,
   },
   cityNameText: {
     fontFamily: APPLE_CALM_THEME.fonts.heading,
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 15.5,
+    fontWeight: '700',
     color: APPLE_CALM_THEME.colors.textPrimary,
   },
   cityIbgeText: {
@@ -663,18 +659,20 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.85)',
   },
   cityFireChip: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 999,
   },
   cityFireChipAlert: {
-    backgroundColor: APPLE_CALM_THEME.colors.severityCriticoSoft,
+    backgroundColor: 'rgba(255, 69, 58, 0.20)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 69, 58, 0.4)',
   },
   cityFireChipCalm: {
-    backgroundColor: '#E5E5EA',
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
   },
   cityFireChipSelected: {
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(255, 255, 255, 0.24)',
   },
   cityFireChipText: {
     fontFamily: APPLE_CALM_THEME.fonts.mono,
@@ -682,7 +680,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   cityFireChipTextAlert: {
-    color: APPLE_CALM_THEME.colors.severityCritico,
+    color: '#FF9F0A',
   },
   cityFireChipTextCalm: {
     color: APPLE_CALM_THEME.colors.textSecondary,
@@ -699,7 +697,7 @@ const styles = StyleSheet.create({
     minHeight: 46,
     paddingHorizontal: 16,
     borderRadius: 12,
-    backgroundColor: APPLE_CALM_THEME.colors.appleBlue,
+    backgroundColor: '#0A84FF',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -714,7 +712,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: APPLE_CALM_THEME.colors.syncGreenSoft,
+    backgroundColor: 'rgba(48, 209, 88, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(48, 209, 88, 0.35)',
     padding: 12,
     borderRadius: 12,
     marginBottom: 12,
@@ -723,20 +723,21 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: APPLE_CALM_THEME.fonts.body,
     fontSize: 13,
-    color: '#1E4620',
+    color: '#E2F8E8',
   },
   validationBold: {
     fontWeight: '700',
+    color: '#30D158',
   },
   localSpotsList: {
     gap: 10,
   },
   localSpotItem: {
-    backgroundColor: APPLE_CALM_THEME.colors.background,
-    borderRadius: 12,
+    backgroundColor: 'rgba(9, 14, 28, 0.6)',
+    borderRadius: 14,
     padding: 14,
     borderWidth: 1,
-    borderColor: APPLE_CALM_THEME.colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     gap: 6,
   },
   localSpotTop: {
@@ -747,7 +748,7 @@ const styles = StyleSheet.create({
   },
   localSpotTitle: {
     fontFamily: APPLE_CALM_THEME.fonts.heading,
-    fontSize: 14,
+    fontSize: 14.5,
     fontWeight: '700',
     color: APPLE_CALM_THEME.colors.textPrimary,
   },
@@ -755,7 +756,7 @@ const styles = StyleSheet.create({
     fontFamily: APPLE_CALM_THEME.fonts.mono,
     fontSize: 11,
     fontWeight: '600',
-    color: APPLE_CALM_THEME.colors.appleBlue,
+    color: '#64D2FF',
   },
   localSpotMeta: {
     fontFamily: APPLE_CALM_THEME.fonts.mono,
@@ -771,8 +772,8 @@ const styles = StyleSheet.create({
   spotZoomLinkText: {
     fontFamily: APPLE_CALM_THEME.fonts.body,
     fontSize: 13,
-    fontWeight: '600',
-    color: APPLE_CALM_THEME.colors.appleBlue,
+    fontWeight: '700',
+    color: '#FFD60A',
   },
   calmEmptyReport: {
     fontFamily: APPLE_CALM_THEME.fonts.body,

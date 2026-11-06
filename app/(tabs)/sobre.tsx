@@ -9,12 +9,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { APPLE_CALM_THEME, useFireMonitor } from '../_layout';
+import { InstitutionalCreditsCard } from '../components/IosWeatherWidgets';
 
 export default function SobreTransparenciaScreen() {
   const { metadata, spots, skeletonLogs, filterLogs, refreshNow } =
     useFireMonitor();
 
-  // Cálculo das métricas científicas para o artigo e banner da SNCT
   const scientificStats = useMemo(() => {
     const totalFilterRuns = filterLogs.length;
     const successfulRuns = filterLogs.filter((l) => l.withinTargetGoal).length;
@@ -54,6 +54,9 @@ export default function SobreTransparenciaScreen() {
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
+      {/* CARTÃO DE DESTAQUE INSTITUCIONAL (IFPI CAMPUS FLORIANO • TURMA TDS-3 • PROF. RENNÊ SANTOS) */}
+      <InstitutionalCreditsCard />
+
       {/* CARTÃO 1: TRANSPARÊNCIA DAS FONTES ORBITAIS (CENSIPAM & INPE) */}
       <View style={styles.card}>
         <Text style={styles.eyebrow}>
@@ -63,9 +66,10 @@ export default function SobreTransparenciaScreen() {
           Arquitetura de Monitoramento Orbital em Tempo Quase-Real
         </Text>
         <Text style={styles.paragraph}>
-          Para mitigar a ansiedade informacional e garantir previsibilidade
-          temporal a usuários com TDAH e TEA Nível 1, todas as janelas de
-          latência satelital são declaradas explicitamente na interface.
+          Projetado pelo curso Técnico em Desenvolvimento de Sistemas (Turma
+          TDS-3) do IFPI — Campus Floriano sob supervisão do Prof. Rennê Santos,
+          o aplicativo aplica a estética Dark Glass inspirada no app Tempo do
+          iOS combinada à previsibilidade temporal para TDAH e TEA Nível 1.
         </Text>
 
         <View style={styles.apiGrid}>
@@ -119,7 +123,7 @@ export default function SobreTransparenciaScreen() {
         <View style={styles.headerBetween}>
           <View style={styles.flexOne}>
             <Text style={styles.eyebrow}>
-              SEÇÃO 5 • TELEMETRIA LOCAL PARA O ARTIGO CIENTÍFICO
+              SEÇÃO 5 • TELEMETRIA LOCAL PARA O ARTIGO CIENTÍFICO (SNCT)
             </Text>
             <Text style={styles.cardTitle}>
               Métricas Empíricas de Acessibilidade Cognitiva
@@ -134,11 +138,7 @@ export default function SobreTransparenciaScreen() {
             ]}
             accessibilityRole="button"
           >
-            <Ionicons
-              name="refresh-outline"
-              size={16}
-              color={APPLE_CALM_THEME.colors.appleBlue}
-            />
+            <Ionicons name="refresh-outline" size={16} color="#64D2FF" />
             <Text style={styles.secondaryBtnText}>Testar Skeleton</Text>
           </Pressable>
         </View>
@@ -165,7 +165,6 @@ export default function SobreTransparenciaScreen() {
           </View>
         </View>
 
-        {/* Tabela de Logs de Isolamento Municipal (Cliques) */}
         <Text style={styles.subSectionTitle}>
           Registro Anônimo de Sessões de Filtragem (Alvo Científico: ≤ 3 Cliques)
         </Text>
@@ -184,7 +183,6 @@ export default function SobreTransparenciaScreen() {
           ))}
         </View>
 
-        {/* Tabela de Logs de Estabilidade Skeleton (TEA Nível 1) */}
         <Text style={styles.subSectionTitle}>
           Registro de Tempo de Resposta Visual (Skeleton Loaders vs. Dados Brutos)
         </Text>
@@ -207,45 +205,38 @@ export default function SobreTransparenciaScreen() {
           APRESENTAÇÃO & AVALIAÇÃO • SEMANA NACIONAL DE CIÊNCIA E TECNOLOGIA
         </Text>
         <Text style={styles.cardTitle}>
-          Diretrizes Neuroinclusivas & Referências do Evento (SNCT / MCTI)
+          Diretrizes Apple Weather Dark Glass & Referências SNCT / IFPI
         </Text>
 
         <View style={styles.checklistContainer}>
           <View style={styles.checkItem}>
-            <Ionicons
-              name="checkmark-circle"
-              size={18}
-              color={APPLE_CALM_THEME.colors.syncGreen}
-            />
-            <Text style={styles.checkText}>
-              <Text style={styles.boldText}>Fundo Previsível (#F2F2F7):</Text>{' '}
-              Cinza claro nativo do iOS para reduzir brilho e fadiga sensorial.
-            </Text>
-          </View>
-          <View style={styles.checkItem}>
-            <Ionicons
-              name="checkmark-circle"
-              size={18}
-              color={APPLE_CALM_THEME.colors.syncGreen}
-            />
+            <Ionicons name="checkmark-circle" size={18} color="#30D158" />
             <Text style={styles.checkText}>
               <Text style={styles.boldText}>
-                Contraste e Isolamento (#FFFFFF, raio 16px):
+                Autoria IFPI — Campus Floriano:
               </Text>{' '}
-              Agrupamento modular que reduz a carga cognitiva no TDAH.
+              Desenvolvido pela Turma TDS-3 sob supervisão do Prof. Rennê
+              Santos.
             </Text>
           </View>
           <View style={styles.checkItem}>
-            <Ionicons
-              name="checkmark-circle"
-              size={18}
-              color={APPLE_CALM_THEME.colors.syncGreen}
-            />
+            <Ionicons name="checkmark-circle" size={18} color="#30D158" />
+            <Text style={styles.checkText}>
+              <Text style={styles.boldText}>
+                Gráficos com Gradiente (Estilo App Tempo iOS):
+              </Text>{' '}
+              Curva orbital contínua de FRP (MW), barras de amplitude térmica por
+              UF e widgets Bento em Dark Glass translúcido.
+            </Text>
+          </View>
+          <View style={styles.checkItem}>
+            <Ionicons name="checkmark-circle" size={18} color="#30D158" />
             <Text style={styles.checkText}>
               <Text style={styles.boldText}>
                 Foco Regional Nordeste ({spots.length} focos monitorados):
               </Text>{' '}
-              Cobertura integral de MA, PI, CE, RN, PB, PE, AL, SE e BA.
+              Cobertura integral de MA, PI (incluindo Floriano), CE, RN, PB, PE,
+              AL, SE e BA.
             </Text>
           </View>
         </View>
@@ -259,11 +250,7 @@ export default function SobreTransparenciaScreen() {
             ]}
             accessibilityRole="link"
           >
-            <Ionicons
-              name="globe-outline"
-              size={18}
-              color={APPLE_CALM_THEME.colors.appleBlue}
-            />
+            <Ionicons name="globe-outline" size={18} color="#64D2FF" />
             <Text style={styles.linkButtonText}>
               Portal Oficial SNCT / MCTI
             </Text>
@@ -281,11 +268,7 @@ export default function SobreTransparenciaScreen() {
             ]}
             accessibilityRole="link"
           >
-            <Ionicons
-              name="easel-outline"
-              size={18}
-              color={APPLE_CALM_THEME.colors.appleBlue}
-            />
+            <Ionicons name="easel-outline" size={18} color="#64D2FF" />
             <Text style={styles.linkButtonText}>
               Template do Banner (Google Slides)
             </Text>
@@ -299,12 +282,12 @@ export default function SobreTransparenciaScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: APPLE_CALM_THEME.colors.background,
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     padding: 16,
     gap: 16,
-    paddingBottom: 32,
+    paddingBottom: 34,
   },
   flexOne: {
     flex: 1,
@@ -312,7 +295,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: APPLE_CALM_THEME.colors.card,
     borderRadius: APPLE_CALM_THEME.radius.card,
-    padding: 16,
+    padding: 18,
     borderWidth: 1,
     borderColor: APPLE_CALM_THEME.colors.border,
   },
@@ -327,14 +310,14 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontFamily: APPLE_CALM_THEME.fonts.mono,
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     color: APPLE_CALM_THEME.colors.textMuted,
     letterSpacing: 0.4,
     marginBottom: 4,
   },
   cardTitle: {
     fontFamily: APPLE_CALM_THEME.fonts.heading,
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '700',
     color: APPLE_CALM_THEME.colors.textPrimary,
     marginBottom: 8,
@@ -350,11 +333,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   apiBox: {
-    backgroundColor: APPLE_CALM_THEME.colors.background,
-    borderRadius: 12,
+    backgroundColor: 'rgba(9, 14, 28, 0.58)',
+    borderRadius: 14,
     padding: 14,
     borderWidth: 1,
-    borderColor: APPLE_CALM_THEME.colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     gap: 8,
   },
   apiBoxHeader: {
@@ -366,12 +349,14 @@ const styles = StyleSheet.create({
   },
   apiTitle: {
     fontFamily: APPLE_CALM_THEME.fonts.heading,
-    fontSize: 15,
+    fontSize: 15.5,
     fontWeight: '700',
     color: APPLE_CALM_THEME.colors.textPrimary,
   },
   latencyBadgeBlue: {
-    backgroundColor: APPLE_CALM_THEME.colors.appleBlueSoft,
+    backgroundColor: 'rgba(10, 132, 255, 0.20)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 210, 255, 0.35)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
@@ -380,10 +365,12 @@ const styles = StyleSheet.create({
     fontFamily: APPLE_CALM_THEME.fonts.mono,
     fontSize: 11,
     fontWeight: '700',
-    color: APPLE_CALM_THEME.colors.appleBlue,
+    color: '#64D2FF',
   },
   latencyBadgeGreen: {
-    backgroundColor: APPLE_CALM_THEME.colors.syncGreenSoft,
+    backgroundColor: 'rgba(48, 209, 88, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(48, 209, 88, 0.35)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
@@ -392,7 +379,7 @@ const styles = StyleSheet.create({
     fontFamily: APPLE_CALM_THEME.fonts.mono,
     fontSize: 11,
     fontWeight: '700',
-    color: APPLE_CALM_THEME.colors.syncGreen,
+    color: '#30D158',
   },
   apiDescription: {
     fontFamily: APPLE_CALM_THEME.fonts.body,
@@ -404,13 +391,15 @@ const styles = StyleSheet.create({
     fontFamily: APPLE_CALM_THEME.fonts.mono,
     fontSize: 11,
     fontWeight: '600',
-    color: APPLE_CALM_THEME.colors.textMuted,
+    color: '#FFD60A',
   },
   secondaryBtn: {
     minHeight: 40,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: APPLE_CALM_THEME.colors.appleBlueSoft,
+    paddingHorizontal: 13,
+    borderRadius: 12,
+    backgroundColor: 'rgba(10, 132, 255, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 210, 255, 0.35)',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -419,7 +408,7 @@ const styles = StyleSheet.create({
     fontFamily: APPLE_CALM_THEME.fonts.body,
     fontSize: 13,
     fontWeight: '600',
-    color: APPLE_CALM_THEME.colors.appleBlue,
+    color: '#64D2FF',
   },
   kpiRow: {
     flexDirection: 'row',
@@ -430,11 +419,11 @@ const styles = StyleSheet.create({
   kpiCard: {
     flex: 1,
     minWidth: 210,
-    backgroundColor: APPLE_CALM_THEME.colors.background,
-    borderRadius: 12,
+    backgroundColor: 'rgba(9, 14, 28, 0.58)',
+    borderRadius: 14,
     padding: 14,
     borderWidth: 1,
-    borderColor: APPLE_CALM_THEME.colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   kpiLabel: {
     fontFamily: APPLE_CALM_THEME.fonts.mono,
@@ -445,16 +434,16 @@ const styles = StyleSheet.create({
   },
   kpiValueGreen: {
     fontFamily: APPLE_CALM_THEME.fonts.heading,
-    fontSize: 28,
-    fontWeight: '700',
-    color: APPLE_CALM_THEME.colors.syncGreen,
+    fontSize: 30,
+    fontWeight: '800',
+    color: '#30D158',
     marginBottom: 4,
   },
   kpiValueBlue: {
     fontFamily: APPLE_CALM_THEME.fonts.heading,
-    fontSize: 28,
-    fontWeight: '700',
-    color: APPLE_CALM_THEME.colors.appleBlue,
+    fontSize: 30,
+    fontWeight: '800',
+    color: '#64D2FF',
     marginBottom: 4,
   },
   kpiSub: {
@@ -464,7 +453,7 @@ const styles = StyleSheet.create({
   },
   subSectionTitle: {
     fontFamily: APPLE_CALM_THEME.fonts.heading,
-    fontSize: 14,
+    fontSize: 14.5,
     fontWeight: '700',
     color: APPLE_CALM_THEME.colors.textPrimary,
     marginTop: 14,
@@ -474,10 +463,12 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   logRow: {
-    backgroundColor: APPLE_CALM_THEME.colors.background,
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    backgroundColor: 'rgba(9, 14, 28, 0.58)',
+    borderRadius: 12,
+    paddingHorizontal: 13,
     paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.07)',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -494,7 +485,7 @@ const styles = StyleSheet.create({
     fontFamily: APPLE_CALM_THEME.fonts.mono,
     fontSize: 11,
     fontWeight: '600',
-    color: APPLE_CALM_THEME.colors.appleBlue,
+    color: '#64D2FF',
   },
   checklistContainer: {
     gap: 10,
@@ -526,7 +517,9 @@ const styles = StyleSheet.create({
     minHeight: 46,
     paddingHorizontal: 14,
     borderRadius: 12,
-    backgroundColor: APPLE_CALM_THEME.colors.appleBlueSoft,
+    backgroundColor: 'rgba(10, 132, 255, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 210, 255, 0.35)',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -535,7 +528,7 @@ const styles = StyleSheet.create({
     fontFamily: APPLE_CALM_THEME.fonts.body,
     fontSize: 13,
     fontWeight: '600',
-    color: APPLE_CALM_THEME.colors.appleBlue,
+    color: '#64D2FF',
   },
   btnPressed: {
     opacity: 0.75,
