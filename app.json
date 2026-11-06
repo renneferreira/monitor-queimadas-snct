@@ -20,7 +20,7 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
+      "output": "single",
       "name": "Monitor de Queimadas Acessível - SNCT (Nordeste)",
       "shortName": "Queimadas NE",
       "lang": "pt-BR",
