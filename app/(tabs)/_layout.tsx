@@ -17,6 +17,9 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        sceneStyle: {
+          backgroundColor: APPLE_CALM_THEME.colors.background,
+        },
         tabBarActiveTintColor: APPLE_CALM_THEME.colors.appleCyan,
         tabBarInactiveTintColor: APPLE_CALM_THEME.colors.textMuted,
         tabBarStyle: styles.tabBar,

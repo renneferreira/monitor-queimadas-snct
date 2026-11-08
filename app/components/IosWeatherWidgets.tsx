@@ -110,75 +110,75 @@ export function AppLogoEmblem({ size = 52 }: AppLogoBadgeProps) {
         />
       ) : (
         <Svg width={size} height={size} viewBox="0 0 64 64">
-        <Defs>
-          <LinearGradient id="logoBgGrad" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%" stopColor="#0D1936" />
-            <Stop offset="55%" stopColor="#162447" />
-            <Stop offset="100%" stopColor="#2A1832" />
-          </LinearGradient>
-          <LinearGradient id="flameGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0%" stopColor="#FFD60A" />
-            <Stop offset="50%" stopColor="#FF9F0A" />
-            <Stop offset="100%" stopColor="#FF453A" />
-          </LinearGradient>
-          <LinearGradient id="orbitGrad" x1="0" y1="0" x2="1" y2="0">
-            <Stop offset="0%" stopColor="#64D2FF" stopOpacity="0.95" />
-            <Stop offset="60%" stopColor="#0A84FF" stopOpacity="0.55" />
-            <Stop offset="100%" stopColor="#30D158" stopOpacity="0.9" />
-          </LinearGradient>
-          <RadialGradient id="coreGlow" cx="50%" cy="54%" r="44%">
-            <Stop offset="0%" stopColor="#FF9F0A" stopOpacity="0.45" />
-            <Stop offset="100%" stopColor="#FF453A" stopOpacity="0" />
-          </RadialGradient>
-        </Defs>
+          <Defs>
+            <LinearGradient id="logoBgGrad" x1="0" y1="0" x2="1" y2="1">
+              <Stop offset="0%" stopColor="#0D1936" />
+              <Stop offset="55%" stopColor="#162447" />
+              <Stop offset="100%" stopColor="#2A1832" />
+            </LinearGradient>
+            <LinearGradient id="flameGrad" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0%" stopColor="#FFD60A" />
+              <Stop offset="50%" stopColor="#FF9F0A" />
+              <Stop offset="100%" stopColor="#FF453A" />
+            </LinearGradient>
+            <LinearGradient id="orbitGrad" x1="0" y1="0" x2="1" y2="0">
+              <Stop offset="0%" stopColor="#64D2FF" stopOpacity="0.95" />
+              <Stop offset="60%" stopColor="#0A84FF" stopOpacity="0.55" />
+              <Stop offset="100%" stopColor="#30D158" stopOpacity="0.9" />
+            </LinearGradient>
+            <RadialGradient id="coreGlow" cx="50%" cy="54%" r="44%">
+              <Stop offset="0%" stopColor="#FF9F0A" stopOpacity="0.45" />
+              <Stop offset="100%" stopColor="#FF453A" stopOpacity="0" />
+            </RadialGradient>
+          </Defs>
 
-        {/* Fundo Squircle Dark Glass */}
-        <Rect
-          x="1"
-          y="1"
-          width="62"
-          height="62"
-          rx="16"
-          fill="url(#logoBgGrad)"
-          stroke="rgba(255,255,255,0.22)"
-          strokeWidth="1.5"
-        />
+          {/* Fundo Squircle Dark Glass */}
+          <Rect
+            x="1"
+            y="1"
+            width="62"
+            height="62"
+            rx="16"
+            fill="url(#logoBgGrad)"
+            stroke="rgba(255,255,255,0.22)"
+            strokeWidth="1.5"
+          />
 
-        {/* Halo Térmico Central */}
-        <Circle cx="32" cy="35" r="22" fill="url(#coreGlow)" />
+          {/* Halo Térmico Central */}
+          <Circle cx="32" cy="35" r="22" fill="url(#coreGlow)" />
 
-        {/* Anéis de Radar Satelital (CENSIPAM / INPE) */}
-        <Circle
-          cx="32"
-          cy="34"
-          r="20"
-          fill="none"
-          stroke="url(#orbitGrad)"
-          strokeWidth="1.4"
-          strokeDasharray="4,3"
-        />
-        <Path
-          d="M 11 28 C 22 14, 42 14, 53 28"
-          fill="none"
-          stroke="#64D2FF"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeOpacity="0.75"
-        />
+          {/* Anéis de Radar Satelital (CENSIPAM / INPE) */}
+          <Circle
+            cx="32"
+            cy="34"
+            r="20"
+            fill="none"
+            stroke="url(#orbitGrad)"
+            strokeWidth="1.4"
+            strokeDasharray="4,3"
+          />
+          <Path
+            d="M 11 28 C 22 14, 42 14, 53 28"
+            fill="none"
+            stroke="#64D2FF"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeOpacity="0.75"
+          />
 
-        {/* Ponto Orbital do Satélite + Indicador Verde IFPI */}
-        <Circle cx="48" cy="22" r="3.2" fill="#30D158" />
-        <Circle cx="16" cy="22" r="2.5" fill="#64D2FF" />
+          {/* Ponto Orbital do Satélite + Indicador Verde IFPI */}
+          <Circle cx="48" cy="22" r="3.2" fill="#30D158" />
+          <Circle cx="16" cy="22" r="2.5" fill="#64D2FF" />
 
-        {/* Gota/Chama Térmica Estilizada (Estilo Ícone Apple Weather) */}
-        <Path
-          d="M32 16 C32 16, 44 28, 44 38 C44 45.2 38.6 50.5 32 50.5 C25.4 50.5 20 45.2 20 38 C20 32.5 24.2 26.8 27.5 22.8 C27.2 27.2 30.2 29.5 32.8 27.2 C34.2 25.9 33.4 20.5 32 16 Z"
-          fill="url(#flameGrad)"
-        />
+          {/* Gota/Chama Térmica Estilizada (Estilo Ícone Apple Weather) */}
+          <Path
+            d="M32 16 C32 16, 44 28, 44 38 C44 45.2 38.6 50.5 32 50.5 C25.4 50.5 20 45.2 20 38 C20 32.5 24.2 26.8 27.5 22.8 C27.2 27.2 30.2 29.5 32.8 27.2 C34.2 25.9 33.4 20.5 32 16 Z"
+            fill="url(#flameGrad)"
+          />
 
-        {/* Núcleo Brilhante */}
-        <Circle cx="32" cy="40.5" r="5" fill="#FFF7ED" fillOpacity="0.9" />
-      </Svg>
+          {/* Núcleo Brilhante */}
+          <Circle cx="32" cy="40.5" r="5" fill="#FFF7ED" fillOpacity="0.9" />
+        </Svg>
       )}
     </View>
   );
@@ -525,10 +525,10 @@ export function StateThermalRangeBars({
       const avgRisk =
         ufSpots.length > 0
           ? Math.round(
-              (ufSpots.reduce((acc, s) => acc + s.fireRiskIndex, 0) /
-                ufSpots.length) *
-                100
-            )
+            (ufSpots.reduce((acc, s) => acc + s.fireRiskIndex, 0) /
+              ufSpots.length) *
+            100
+          )
           : 50;
 
       const startPct = Math.max(

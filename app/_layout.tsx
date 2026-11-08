@@ -523,7 +523,14 @@ export default function RootLayout() {
         <InstitutionalCreditsCard compact />
 
         <View style={styles.contentContainer}>
-          <Stack screenOptions={{ headerShown: false }} />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: {
+                backgroundColor: APPLE_CALM_THEME.colors.background,
+              },
+            }}
+          />
         </View>
       </SafeAreaView>
     </FireMonitorContext.Provider>
@@ -626,6 +633,6 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: APPLE_CALM_THEME.colors.background,
   },
 });

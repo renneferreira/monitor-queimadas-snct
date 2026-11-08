@@ -458,7 +458,7 @@ export default function ConsultaSeletivaScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: APPLE_CALM_THEME.colors.background,
   },
   scrollContent: {
     padding: 16,
