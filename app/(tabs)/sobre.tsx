@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,6 +15,39 @@ import { InstitutionalCreditsCard } from '../components/IosWeatherWidgets';
 export default function SobreTransparenciaScreen() {
   const { metadata, spots, skeletonLogs, filterLogs, refreshNow } =
     useFireMonitor();
+  const [exportFeedback, setExportFeedback] = useState<string | null>(null);
+
+  const handleExportScientificCSV = useCallback(() => {
+    const header =
+      'tipo_log,id,timestamp_iso,uf_ou_tela,municipio,cliques_ou_lead_ms,duracao_ms,meta_atingida_ou_cls\n';
+    const filterRows = filterLogs
+      .map(
+        (f) =>
+          `FILTRAGEM_MUNICIPAL,${f.id},${f.timestampISO},${f.targetUF},"${f.targetMunicipality}",${f.clicksUsed},${f.durationMs},${f.withinTargetGoal ? 'META_<=3_OK' : 'ACIMA'}`
+      )
+      .join('\n');
+    const skelRows = skeletonLogs
+      .map(
+        (s) =>
+          `ESTABILIDADE_SKELETON,${s.id},${s.timestampISO},${s.screen},N/A,${s.skeletonLeadTimeMs},${s.dataHydrationTimeMs},CLS_0.000`
+      )
+      .join('\n');
+    const csvContent = `${header}${filterRows}\n${skelRows}\n`;
+
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `telemetria-snct-ifpi-floriano-tds3-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setExportFeedback('Arquivo CSV exportado com sucesso para o Artigo SNCT!');
+      setTimeout(() => setExportFeedback(null), 4000);
+    }
+  }, [filterLogs, skeletonLogs]);
 
   const scientificStats = useMemo(() => {
     const totalFilterRuns = filterLogs.length;
@@ -130,18 +164,40 @@ export default function SobreTransparenciaScreen() {
             </Text>
           </View>
 
-          <Pressable
-            onPress={refreshNow}
-            style={({ pressed }) => [
-              styles.secondaryBtn,
-              pressed && styles.btnPressed,
-            ]}
-            accessibilityRole="button"
-          >
-            <Ionicons name="refresh-outline" size={16} color="#64D2FF" />
-            <Text style={styles.secondaryBtnText}>Testar Skeleton</Text>
-          </Pressable>
+          <View style={styles.actionsRow}>
+            <Pressable
+              onPress={refreshNow}
+              style={({ pressed }) => [
+                styles.secondaryBtn,
+                pressed && styles.btnPressed,
+              ]}
+              accessibilityRole="button"
+            >
+              <Ionicons name="refresh-outline" size={16} color="#64D2FF" />
+              <Text style={styles.secondaryBtnText}>Testar Skeleton</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={handleExportScientificCSV}
+              style={({ pressed }) => [
+                styles.exportCsvBtn,
+                pressed && styles.btnPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Exportar dados científicos em CSV para o artigo da SNCT"
+            >
+              <Ionicons name="download-outline" size={16} color="#30D158" />
+              <Text style={styles.exportCsvBtnText}>Exportar CSV (Artigo)</Text>
+            </Pressable>
+          </View>
         </View>
+
+        {exportFeedback ? (
+          <View style={styles.exportBanner}>
+            <Ionicons name="checkmark-circle" size={16} color="#30D158" />
+            <Text style={styles.exportBannerText}>{exportFeedback}</Text>
+          </View>
+        ) : null}
 
         <View style={styles.kpiRow}>
           <View style={styles.kpiCard}>
@@ -409,6 +465,46 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#64D2FF',
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  exportCsvBtn: {
+    minHeight: 40,
+    paddingHorizontal: 13,
+    borderRadius: 12,
+    backgroundColor: 'rgba(48, 209, 88, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(48, 209, 88, 0.38)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  exportCsvBtnText: {
+    fontFamily: APPLE_CALM_THEME.fonts.body,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#30D158',
+  },
+  exportBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(48, 209, 88, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(48, 209, 88, 0.35)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginBottom: 8,
+  },
+  exportBannerText: {
+    fontFamily: APPLE_CALM_THEME.fonts.body,
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#30D158',
   },
   kpiRow: {
     flexDirection: 'row',

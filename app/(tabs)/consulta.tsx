@@ -102,7 +102,7 @@ export default function ConsultaSeletivaScreen() {
       (s) =>
         s.uf === activeUF &&
         normalizeSearchText(s.municipality) ===
-          normalizeSearchText(selectedMunicipality)
+        normalizeSearchText(selectedMunicipality)
     );
   }, [spots, activeUF, selectedMunicipality]);
 
@@ -233,15 +233,14 @@ export default function ConsultaSeletivaScreen() {
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder={`Digite a cidade em ${activeUF} (ex: ${
-              activeUF === 'PI'
+            placeholder={`Digite a cidade em ${activeUF} (ex: ${activeUF === 'PI'
                 ? 'Floriano ou Uruçuí'
                 : activeUF === 'BA'
                   ? 'Barreiras'
                   : activeUF === 'PE'
                     ? 'Petrolina'
                     : 'filtrar município'
-            })...`}
+              })...`}
             placeholderTextColor={APPLE_CALM_THEME.colors.textMuted}
             style={styles.searchInput}
             autoCorrect={false}
@@ -336,11 +335,10 @@ export default function ConsultaSeletivaScreen() {
                       ]}
                     >
                       {hasActiveFire
-                        ? `${muniSpots.length} ${
-                            muniSpots.length === 1
-                              ? 'foco ativo'
-                              : 'focos ativos'
-                          }`
+                        ? `${muniSpots.length} ${muniSpots.length === 1
+                          ? 'foco ativo'
+                          : 'focos ativos'
+                        }`
                         : 'Sem focos'}
                     </Text>
                   </View>
