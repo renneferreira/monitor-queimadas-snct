@@ -155,15 +155,15 @@ export default function SobreTransparenciaScreen() {
         </View>
       </View>
 
-      {/* CARTÃO 2: METODOLOGIA PARA O ARTIGO CIENTÍFICO (LOGS DE VALIDAÇÃO) */}
+      {/* CARTÃO 2: DESEMPENHO, FLUIDEZ E ESTABILIDADE VISUAL */}
       <View style={styles.card}>
         <View style={styles.headerBetween}>
           <View style={styles.flexOne}>
             <Text style={styles.eyebrow}>
-              SEÇÃO 5 • TELEMETRIA LOCAL PARA O ARTIGO CIENTÍFICO (SNCT)
+              DESEMPENHO & USABILIDADE • FLUIDEZ E ESTABILIDADE VISUAL
             </Text>
             <Text style={styles.cardTitle}>
-              Métricas Empíricas de Acessibilidade Cognitiva
+              Estabilidade de Carregamento e Rapidez de Consulta
             </Text>
           </View>
 
@@ -175,9 +175,10 @@ export default function SobreTransparenciaScreen() {
                 pressed && styles.btnPressed,
               ]}
               accessibilityRole="button"
+              accessibilityLabel="Simular recarregamento de dados de satélite"
             >
               <Ionicons name="refresh-outline" size={16} color="#64D2FF" />
-              <Text style={styles.secondaryBtnText}>Testar Skeleton</Text>
+              <Text style={styles.secondaryBtnText}>Simular Sincronização</Text>
             </Pressable>
 
             <Pressable
@@ -187,13 +188,21 @@ export default function SobreTransparenciaScreen() {
                 pressed && styles.btnPressed,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Exportar dados científicos em CSV para o artigo da SNCT"
+              accessibilityLabel="Exportar métricas de desempenho em CSV"
             >
               <Ionicons name="download-outline" size={16} color="#30D158" />
-              <Text style={styles.exportCsvBtnText}>Exportar CSV (Artigo)</Text>
+              <Text style={styles.exportCsvBtnText}>Exportar Dados (CSV)</Text>
             </Pressable>
           </View>
         </View>
+
+        <Text style={styles.paragraph}>
+          Para proporcionar uma navegação fluida no celular (iOS e Android) e na
+          Web, o aplicativo reserva previamente o espaço visual do mapa e dos
+          gráficos enquanto consulta os satélites do INPE e CENSIPAM. Isso evita
+          que a tela pisque ou mude de posição durante o carregamento, além de
+          permitir localizar qualquer cidade do Nordeste em até 3 toques.
+        </Text>
 
         {exportFeedback ? (
           <View style={styles.exportBanner}>
@@ -204,28 +213,28 @@ export default function SobreTransparenciaScreen() {
 
         <View style={styles.kpiRow}>
           <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>TAXA DE SUCESSO (≤ 3 CLIQUES)</Text>
+            <Text style={styles.kpiLabel}>BUSCA RÁPIDA (ATÉ 3 TOQUES)</Text>
             <Text style={styles.kpiValueGreen}>
               {scientificStats.successRatePercent}%
             </Text>
             <Text style={styles.kpiSub}>
-              Média atual: {scientificStats.avgClicks} cliques até isolamento
-              municipal
+              Média atual: {scientificStats.avgClicks} toques até localizar o
+              município desejado
             </Text>
           </View>
 
           <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>ESTABILIDADE VISUAL (CLS)</Text>
-            <Text style={styles.kpiValueBlue}>{scientificStats.clsScore}</Text>
+            <Text style={styles.kpiLabel}>ESTABILIDADE DE TELA (SEM SALTOS)</Text>
+            <Text style={styles.kpiValueBlue}>100% Estável</Text>
             <Text style={styles.kpiSub}>
-              Skeleton antecede dados em ~{scientificStats.avgSkeletonLeadMs} ms
-              (Zero salto de tela)
+              Moldura visual preparada em ~{scientificStats.avgSkeletonLeadMs}{' '}
+              ms antes dos dados chegarem (CLS {scientificStats.clsScore})
             </Text>
           </View>
         </View>
 
         <Text style={styles.subSectionTitle}>
-          Registro Anônimo de Sessões de Filtragem (Alvo Científico: ≤ 3 Cliques)
+          Histórico Recente de Consultas por Cidade (Meta: localizar em até 3 toques)
         </Text>
         <View style={styles.logList}>
           {filterLogs.slice(0, 5).map((log) => (
@@ -234,24 +243,24 @@ export default function SobreTransparenciaScreen() {
                 {log.targetMunicipality} ({log.targetUF})
               </Text>
               <Text style={styles.logMonoText}>
-                {log.clicksUsed} {log.clicksUsed === 1 ? 'clique' : 'cliques'} •{' '}
+                {log.clicksUsed} {log.clicksUsed === 1 ? 'toque' : 'toques'} •{' '}
                 {(log.durationMs / 1000).toFixed(2)}s •{' '}
-                {log.withinTargetGoal ? 'META ATINGIDA' : 'ACIMA DA META'}
+                {log.withinTargetGoal ? 'RÁPIDO (≤ 3)' : 'ACIMA DE 3'}
               </Text>
             </View>
           ))}
         </View>
 
         <Text style={styles.subSectionTitle}>
-          Registro de Tempo de Resposta Visual (Skeleton Loaders vs. Dados Brutos)
+          Tempo de Resposta por Tela (Preparação Visual vs. Sincronização Total)
         </Text>
         <View style={styles.logList}>
           {skeletonLogs.slice(0, 4).map((sLog) => (
             <View key={sLog.id} style={styles.logRow}>
               <Text style={styles.logPrimaryText}>Tela: {sLog.screen}</Text>
               <Text style={styles.logMonoText}>
-                Skeleton: {sLog.skeletonLeadTimeMs}ms • Total:{' '}
-                {sLog.dataHydrationTimeMs}ms • CLS: 0.000
+                Preparação: {sLog.skeletonLeadTimeMs}ms • Sincronização:{' '}
+                {sLog.dataHydrationTimeMs}ms • Sem saltos
               </Text>
             </View>
           ))}

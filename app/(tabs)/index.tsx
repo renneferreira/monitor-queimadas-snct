@@ -456,7 +456,7 @@ export default function MapaNordesteScreen() {
           >
             <View style={styles.skeletonBadge} />
             <Text style={styles.skeletonStatusText}>
-              Carregando malha territorial oficial do IBGE (CLS 0.000)...
+              Sincronizando malha oficial do IBGE e focos de satélite...
             </Text>
             <View style={styles.skeletonMapGrid} />
           </View>
