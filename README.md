@@ -6,21 +6,28 @@
 
 > **Projeto Institucional:** **IFPI — Campus Floriano** (Instituto Federal do Piauí)  
 > **Desenvolvimento:** **Turma TDS-3** (Técnico em Desenvolvimento de Sistemas)  
-> **Supervisão e Orientação:** **Prof. Rennê Santos**  
-> **Evento:** Semana Nacional de Ciência e Tecnologia (**SNCT / MCTI**)
+> **Supervisão e Orientação:** **Prof. Rennê Santos** ([@oxe.renne](https://www.instagram.com/oxe.renne))  
+> **Evento:** Semana Nacional de Ciência e Tecnologia (**SNCT / MCTI**)  
+> **App Online (Produção Vercel):** [https://radar-fogo-snct.vercel.app](https://radar-fogo-snct.vercel.app)
 
 ---
 
-## 1. Visão Geral & Design System (Estilo App *Tempo* do iOS • Dark Glass)
+## 1. Visão Geral & Design System (`radar-fogo-ui` • Dark Glass Acessível)
 
-O **Radar Fogo** é um *Progressive Web App* (PWA) construído em **React Native com Expo Router**, projetado sob a estética **Apple iOS 18 Weather (*App Tempo*) Dark Glass** combinada com diretrizes de **acessibilidade cognitiva para TDAH e TEA Nível 1** (`CLS = 0.000` e isolamento municipal em `<= 3 cliques`).
+O **Radar Fogo** é um *Progressive Web App* (PWA) construído em **React Native com Expo Router**, projetado sob a estética **Apple iOS 18 Weather (*App Tempo*) Dark Glass** combinada com as regras de **acessibilidade cognitiva para TDAH e TEA Nível de Suporte 1** (Skill `radar-fogo-ui`):
+
+- **Hierarquia previsível em todas as telas:** **Título → Resumo → Detalhes sob demanda** (divulgação progressiva).
+- **Risco nunca indicado apenas por cor:** Todos os selos, cartões e legendas combinam **cor + ícone + texto** (`Baixo`, `Médio`, `Alto` e `Crítico`).
+- **Temperatura e Focos em Destaque:** O card principal exibe a temperatura regional estimada (`°C`), máxima/mínima, umidade (`%`), focos ativos e barra de risco.
+- **Conforto Visual e Movimento Reduzido:** Animações curtas (`150 ms` a `300 ms`), sem loops ou piscas, com detecção automática do sistema e interruptor **"Reduzir animações"** no topo do app e na aba `Sobre o App`.
+- **Alvos de toque confortáveis:** Todos os botões, filtros e links possuem área mínima de `44×44 px` e link direto para satélite no **Google Maps**.
 
 ### Destaques Visuais e Gráficos com Gradiente:
-1. **Hero Atmosférico estilo App Tempo do iOS:** Exibição central de alto impacto com contagem orbital ativa, potência radiativa máxima (FRP em MW), resumo de severidade por bioma e filtro imediato para os 9 estados do Nordeste (`MA`, `PI`, `CE`, `RN`, `PB`, `PE`, `AL`, `SE`, `BA`), com destaque para **Floriano (PI)**.
+1. **Card Principal estilo App Tempo (`index.tsx`):** Exibição imediata da temperatura regional (`°C`), contagem de focos ativos, potência radiativa máxima (FRP em MW), barra de nível de risco e filtro rápido para os 9 estados do Nordeste (`MA`, `PI`, `CE`, `RN`, `PB`, `PE`, `AL`, `SE`, `BA`), com destaque para **Floriano (PI)**.
 2. **Curva Horária de Potência Radiativa (`FrpOrbitalAreaChart`):** Gráfico vetorial em curva de Bézier cúbica com preenchimento em gradiente térmico (`#FF453A` → `#FF9F0A` → transparente) mapeando as janelas orbitais de 10 a 30 minutos dos satélites `AQUA_M-T`, `NOAA-20`, `GOES-16`, `NPP-SUOMI` e `TERRA`.
-3. **Barras de Amplitude Térmica por Estado (`StateThermalRangeBars`):** Inspirado na "Previsão de 10 Dias" do app Tempo do iOS, exibe cápsulas horizontais em gradiente multicolorido (`#30D158` → `#FFD60A` → `#FF9F0A` → `#FF453A`) comparando FRP mínimo e máximo de cada UF.
-4. **Bento Grid Ambiental (`BentoEnvironmentalWidgets`):** Medidor de espectro contínuo de Risco de Ignição (estilo Índice UV / Qualidade do Ar da Apple) e distribuição proporcional por bioma (*Caatinga*, *Cerrado MATOPIBA* e *Mata Atlântica*).
-5. **Radar Cartográfico Dark Glass:** Mapa vetorial interativo do Nordeste com halos térmicos em `<RadialGradient>`, clusterização limpa e controles de zoom acessíveis (`>= 48x48 dp`).
+3. **Temperatura, Focos e Risco por Estado (`StateThermalRangeBars`):** Lista resumida dos 5 estados mais críticos (expansível para todos os 9 estados do Nordeste) com temperatura (`°C`), focos ativos, cápsula em gradiente térmico e selo acessível (`cor + ícone + texto`).
+4. **Bento Grid Ambiental (`BentoEnvironmentalWidgets`):** Medidor de espectro contínuo de Risco de Fogo e distribuição proporcional por bioma (*Caatinga*, *Cerrado MATOPIBA* e *Mata Atlântica*).
+5. **Radar Cartográfico Oficial IBGE (`index.tsx`):** Malha vetorial oficial do IBGE para os 9 estados do Nordeste, com nomes das cidades ao clicar nos focos, link direto para o Google Maps e legenda inferior fixa sem sobreposição.
 
 ---
 
@@ -28,22 +35,28 @@ O **Radar Fogo** é um *Progressive Web App* (PWA) construído em **React Native
 
 ```text
 /
+├── .agent/skills/radar-fogo-ui/SKILL.md # Skill de design acessível (TDAH e TEA nível 1)
+├── docs/radar-fogo-ui.md                # Documentação de referência da skill de UI
 ├── app.json                             # Metadados PWA Dark Glass, ícone e identidade Radar Fogo / IFPI TDS-3
 ├── package.json                         # Dependências Expo Router, React Native Web e SVG
+├── vercel.json                          # Configuração de build e rotas SPA para deploy na Vercel
 ├── public/
 │   ├── logo-radar-fogo.png              # Logo oficial 3D Dark Glass com "RADAR FOGO" em destaque
 │   └── preview-snct.html                # Versão standalone para apresentação offline
 └── app/
-    ├── _layout.tsx                      # Tema Dark Glass (#070C18), Barra CENSIPAM/INPE e Faixa IFPI
+    ├── _layout.tsx                      # Tema Dark Glass (#070C18), botão Reduzir Animações e Créditos IFPI
+    ├── theme/
+    │   └── tokens.ts                    # Tokens unificados, níveis de risco e estimativa climática (°C)
     ├── components/
-    │   └── IosWeatherWidgets.tsx        # Gráficos com gradiente (Curva FRP, Barras UF, Bento, Logo e Créditos)
+    │   └── IosWeatherWidgets.tsx        # Logo vetorial 3D, Curva FRP, Lista de Estados e Bento Grid
     ├── (tabs)/
-    │   ├── _layout.tsx                  # Tab Bar translúcida Dark Glass
-    │   ├── index.tsx                    # Radar Nordeste + Hero Clima Fogo + Gráficos iOS Weather
-    │   ├── consulta.tsx                 # Isolamento por UF e Município (API IBGE em <= 3 cliques)
-    │   └── sobre.tsx                    # Créditos IFPI Campus Floriano (TDS-3 / Prof. Rennê Santos) e Artigo SNCT
+    │   ├── _layout.tsx                  # Barra de navegação inferior acessível (mín. 48px)
+    │   ├── index.tsx                    # Radar Nordeste + Card de Clima e Risco + Mapa IBGE
+    │   ├── consulta.tsx                 # Consulta por Estado e Município (API IBGE em <= 3 toques)
+    │   └── sobre.tsx                    # Sobre o App, Preferências de Acessibilidade, Fontes e Créditos
     └── services/
-        └── fireDataService.ts           # Integração INPE (10m), CENSIPAM (30m), IBGE e Clusterização
+        ├── fireDataService.ts           # Integração INPE (10m), CENSIPAM (30m), IBGE e Google Maps
+        └── neStatesGeoPaths.ts          # Malha cartográfica oficial do IBGE dos 9 estados do Nordeste
 ```
 
 ---
