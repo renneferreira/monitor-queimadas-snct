@@ -14,6 +14,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -132,6 +133,8 @@ export function useFireMonitor(): FireMonitorContextValue {
 }
 
 export default function RootLayout() {
+  const { width: winWidth } = useWindowDimensions();
+  const isMobile = winWidth < 600;
   const [spots, setSpots] = useState<FireSpot[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedUF, setSelectedUF] = useState<NordesteUF | 'TODOS'>('TODOS');
@@ -477,26 +480,36 @@ export default function RootLayout() {
 
         {/* BARRA SUPERIOR DARK GLASS: LOGO + TRANSPARÊNCIA CENSIPAM/INPE + CRÉDITOS IFPI */}
         <View
-          style={styles.transparencyBanner}
+          style={[
+            styles.transparencyBanner,
+            isMobile && { paddingHorizontal: 12, paddingVertical: 6 },
+          ]}
           accessibilityRole="header"
           accessibilityLabel="Cabeçalho do Monitor Orbital de Queimadas - IFPI Campus Floriano Turma TDS-3"
         >
           <View style={styles.bannerTopRow}>
             <View style={styles.brandAndSourceRow}>
-              <AppLogoEmblem size={40} />
+              <AppLogoEmblem size={isMobile ? 42 : 46} />
               <View style={styles.brandTextCol}>
                 <View style={styles.brandTitleInline}>
                   <Text style={styles.appBrandName}>Radar Fogo</Text>
                   <View style={styles.ifpiHeaderBadge}>
                     <Text style={styles.ifpiHeaderBadgeText}>
-                      IFPI • Campus Floriano • TDS-3
+                      {isMobile
+                        ? 'IFPI • TDS-3'
+                        : 'IFPI • Campus Floriano • TDS-3'}
                     </Text>
                   </View>
                 </View>
                 <View style={styles.sourceBadgeRow}>
                   <View style={styles.statusDot} />
-                  <Text style={styles.transparencySourceText}>
-                    Telemetria ativa (10–30 min) • Fontes detalhadas no rodapé e aba Sobre
+                  <Text
+                    style={styles.transparencySourceText}
+                    numberOfLines={1}
+                  >
+                    {isMobile
+                      ? 'Telemetria ativa (10–30m) • Fontes na aba Sobre'
+                      : 'Telemetria ativa (10–30 min) • Fontes detalhadas no rodapé e aba Sobre'}
                   </Text>
                 </View>
               </View>
@@ -506,15 +519,25 @@ export default function RootLayout() {
               onPress={() => loadData(true)}
               style={({ pressed }) => [
                 styles.syncButton,
+                isMobile && { minHeight: 32, paddingHorizontal: 10 },
                 pressed && styles.syncButtonPressed,
               ]}
               accessibilityRole="button"
               accessibilityLabel="Atualizar dados de queimadas agora"
             >
-              <Text style={styles.syncTimestampText}>
+              <Text
+                style={[
+                  styles.syncTimestampText,
+                  isMobile && { fontSize: 10.5 },
+                ]}
+              >
                 {isLoading
-                  ? 'Sincronizando satélites...'
-                  : `Sincronizado às ${metadata.lastSyncFormatted}`}
+                  ? isMobile
+                    ? 'Sincronizando...'
+                    : 'Sincronizando satélites...'
+                  : isMobile
+                    ? `Sync ${metadata.lastSyncFormatted}`
+                    : `Sincronizado às ${metadata.lastSyncFormatted}`}
               </Text>
             </Pressable>
           </View>

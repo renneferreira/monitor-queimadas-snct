@@ -96,8 +96,8 @@ export interface SyncMetadata {
 }
 
 export const NORDESTE_CENTER = {
-  latitude: -8.65,
-  longitude: -40.55,
+  latitude: -9.75,
+  longitude: -41.55,
   zoom: 1,
 };
 

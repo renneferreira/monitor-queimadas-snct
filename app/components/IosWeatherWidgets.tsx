@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import Svg, {
   Circle,
@@ -85,6 +86,7 @@ interface AppLogoBadgeProps {
 }
 
 export function AppLogoEmblem({ size = 52 }: AppLogoBadgeProps) {
+  const showLabel = size >= 66;
   return (
     <View
       style={[
@@ -98,101 +100,181 @@ export function AppLogoEmblem({ size = 52 }: AppLogoBadgeProps) {
       accessibilityRole="image"
       accessibilityLabel="Logo Radar Fogo - Monitor Orbital de Queimadas - IFPI Campus Floriano Turma TDS-3"
     >
-      {Platform.OS === 'web' ? (
-        <Image
-          source={{ uri: '/logo-radar-fogo.png' }}
-          style={{
-            width: size,
-            height: size,
-            borderRadius: Math.round(size * 0.24),
-            borderWidth: 1,
-            borderColor: 'rgba(255,255,255,0.28)',
-          }}
+      <Svg width={size} height={size} viewBox="0 0 64 64">
+        <Defs>
+          <LinearGradient id="logoBgGrad" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0%" stopColor="#081229" />
+            <Stop offset="52%" stopColor="#122347" />
+            <Stop offset="100%" stopColor="#2E112D" />
+          </LinearGradient>
+          <LinearGradient id="glassReflection" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.30" />
+            <Stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.0" />
+          </LinearGradient>
+          <LinearGradient id="flameOuterGrad" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0%" stopColor="#FFE629" />
+            <Stop offset="42%" stopColor="#FF9500" />
+            <Stop offset="100%" stopColor="#FF2D55" />
+          </LinearGradient>
+          <LinearGradient id="flameInnerGrad" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0%" stopColor="#FFFFFF" />
+            <Stop offset="55%" stopColor="#FFD60A" />
+            <Stop offset="100%" stopColor="#FF9500" />
+          </LinearGradient>
+          <LinearGradient id="orbitGrad" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0%" stopColor="#64D2FF" stopOpacity="0.98" />
+            <Stop offset="50%" stopColor="#0A84FF" stopOpacity="0.65" />
+            <Stop offset="100%" stopColor="#30D158" stopOpacity="0.95" />
+          </LinearGradient>
+          <LinearGradient id="radarSweepGrad" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0%" stopColor="#30D158" stopOpacity="0.36" />
+            <Stop offset="50%" stopColor="#64D2FF" stopOpacity="0.16" />
+            <Stop offset="100%" stopColor="#0A84FF" stopOpacity="0.0" />
+          </LinearGradient>
+          <RadialGradient id="coreGlow" cx="50%" cy="52%" r="46%">
+            <Stop offset="0%" stopColor="#FF9500" stopOpacity="0.58" />
+            <Stop offset="55%" stopColor="#FF2D55" stopOpacity="0.22" />
+            <Stop offset="100%" stopColor="#FF2D55" stopOpacity="0" />
+          </RadialGradient>
+        </Defs>
+
+        {/* Base Squircle iOS 18 Dark Glass */}
+        <Rect
+          x="1.2"
+          y="1.2"
+          width="61.6"
+          height="61.6"
+          rx="16"
+          fill="url(#logoBgGrad)"
+          stroke="rgba(100, 210, 255, 0.42)"
+          strokeWidth="1.6"
         />
-      ) : (
-        <Svg width={size} height={size} viewBox="0 0 64 64">
-          <Defs>
-            <LinearGradient id="logoBgGrad" x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0%" stopColor="#0D1936" />
-              <Stop offset="55%" stopColor="#162447" />
-              <Stop offset="100%" stopColor="#2A1832" />
-            </LinearGradient>
-            <LinearGradient id="flameGrad" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor="#FFD60A" />
-              <Stop offset="50%" stopColor="#FF9F0A" />
-              <Stop offset="100%" stopColor="#FF453A" />
-            </LinearGradient>
-            <LinearGradient id="orbitGrad" x1="0" y1="0" x2="1" y2="0">
-              <Stop offset="0%" stopColor="#64D2FF" stopOpacity="0.95" />
-              <Stop offset="60%" stopColor="#0A84FF" stopOpacity="0.55" />
-              <Stop offset="100%" stopColor="#30D158" stopOpacity="0.9" />
-            </LinearGradient>
-            <RadialGradient id="coreGlow" cx="50%" cy="54%" r="44%">
-              <Stop offset="0%" stopColor="#FF9F0A" stopOpacity="0.45" />
-              <Stop offset="100%" stopColor="#FF453A" stopOpacity="0" />
-            </RadialGradient>
-          </Defs>
 
-          {/* Fundo Squircle Dark Glass */}
-          <Rect
-            x="1"
-            y="1"
-            width="62"
-            height="62"
-            rx="16"
-            fill="url(#logoBgGrad)"
-            stroke="rgba(255,255,255,0.22)"
-            strokeWidth="1.5"
-          />
+        {/* Reflexo Superior de Vidro (Apple Specular Highlight) */}
+        <Path
+          d="M 8 2.5 L 56 2.5 C 59.5 2.5, 61.5 5, 61.5 9 L 61.5 22 C 45 27, 19 27, 2.5 22 L 2.5 9 C 2.5 5, 4.5 2.5, 8 2.5 Z"
+          fill="url(#glassReflection)"
+        />
 
-          {/* Halo Térmico Central */}
-          <Circle cx="32" cy="35" r="22" fill="url(#coreGlow)" />
+        {/* Halo Térmico Central */}
+        <Circle cx="32" cy="33" r="24" fill="url(#coreGlow)" />
 
-          {/* Anéis de Radar Satelital (CENSIPAM / INPE) */}
-          <Circle
-            cx="32"
-            cy="34"
-            r="20"
-            fill="none"
-            stroke="url(#orbitGrad)"
-            strokeWidth="1.4"
-            strokeDasharray="4,3"
-          />
-          <Path
-            d="M 11 28 C 22 14, 42 14, 53 28"
-            fill="none"
-            stroke="#64D2FF"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeOpacity="0.75"
-          />
+        {/* Feixe de Varredura do Radar Orbital */}
+        <Path
+          d="M 32 33 L 52 17 A 25 25 0 0 1 56 36 Z"
+          fill="url(#radarSweepGrad)"
+        />
 
-          {/* Ponto Orbital do Satélite + Indicador Verde IFPI */}
-          <Circle cx="48" cy="22" r="3.2" fill="#30D158" />
-          <Circle cx="16" cy="22" r="2.5" fill="#64D2FF" />
+        {/* Anéis Concêntricos do Radar (CENSIPAM / INPE) */}
+        <Circle
+          cx="32"
+          cy="33"
+          r="23"
+          fill="none"
+          stroke="rgba(100, 210, 255, 0.28)"
+          strokeWidth="1"
+        />
+        <Circle
+          cx="32"
+          cy="33"
+          r="17.5"
+          fill="none"
+          stroke="url(#orbitGrad)"
+          strokeWidth="1.5"
+          strokeDasharray="4,2.8"
+        />
+        <Circle
+          cx="32"
+          cy="33"
+          r="11.5"
+          fill="none"
+          stroke="rgba(255, 159, 10, 0.35)"
+          strokeWidth="1"
+        />
 
-          {/* Gota/Chama Térmica Estilizada (Estilo Ícone Apple Weather) */}
-          <Path
-            d="M32 16 C32 16, 44 28, 44 38 C44 45.2 38.6 50.5 32 50.5 C25.4 50.5 20 45.2 20 38 C20 32.5 24.2 26.8 27.5 22.8 C27.2 27.2 30.2 29.5 32.8 27.2 C34.2 25.9 33.4 20.5 32 16 Z"
-            fill="url(#flameGrad)"
-          />
+        {/* Eixos de Precisão Cartográfica IBGE */}
+        <Line
+          x1="32"
+          y1="7"
+          x2="32"
+          y2="14"
+          stroke="rgba(100, 210, 255, 0.45)"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+        />
+        <Line
+          x1="7"
+          y1="33"
+          x2="13"
+          y2="33"
+          stroke="rgba(100, 210, 255, 0.45)"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+        />
+        <Line
+          x1="51"
+          y1="33"
+          x2="57"
+          y2="33"
+          stroke="rgba(100, 210, 255, 0.45)"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+        />
 
-          {/* Núcleo Brilhante */}
-          <Circle cx="32" cy="36.5" r="4.2" fill="#FFF7ED" fillOpacity="0.9" />
+        {/* Arco Orbital de Satélite + Nós Luminosos */}
+        <Path
+          d="M 10 26 C 21 10, 43 10, 54 26"
+          fill="none"
+          stroke="#64D2FF"
+          strokeWidth="1.9"
+          strokeLinecap="round"
+          strokeOpacity="0.9"
+        />
+        <Circle cx="50.5" cy="20.5" r="3.4" fill="#30D158" stroke="#071024" strokeWidth="1.2" />
+        <Circle cx="14.5" cy="20.5" r="2.6" fill="#64D2FF" stroke="#071024" strokeWidth="1" />
 
-          {/* Nome RADAR FOGO em destaque na base do emblema vetorial */}
-          <SvgText
-            x="32"
-            y="57"
-            fill="#FFFFFF"
-            fontSize="7.2"
-            fontWeight="800"
-            textAnchor="middle"
-          >
-            RADAR FOGO
-          </SvgText>
-        </Svg>
-      )}
+        {/* Chama 3D Escultural Principal (Radar Fogo) */}
+        <Path
+          d="M32 11.5 C32 11.5, 46 25.5, 46 37.2 C46 45.6 39.8 51.5 32 51.5 C24.2 51.5 18 45.6 18 37.2 C18 30.8 22.8 24.2 26.8 19.6 C26.4 24.8 29.8 27.4 32.8 24.8 C34.4 23.2 33.6 16.8 32 11.5 Z"
+          fill="url(#flameOuterGrad)"
+        />
+
+        {/* Chama Interna Incandescente */}
+        <Path
+          d="M32 23.5 C32 23.5, 39.5 31.5, 39.5 38.2 C39.5 42.8 36.2 46.2 32 46.2 C27.8 46.2 24.5 42.8 24.5 38.2 C24.5 33.5 28.5 28.2 32 23.5 Z"
+          fill="url(#flameInnerGrad)"
+        />
+
+        {/* Alvo de Detecção Térmica no Núcleo */}
+        <Circle cx="32" cy="38.5" r="3.6" fill="#FFFFFF" />
+        <Circle cx="32" cy="38.5" r="1.6" fill="#FF2D55" />
+
+        {showLabel ? (
+          <G>
+            <Rect
+              x="7"
+              y="49.5"
+              width="50"
+              height="10.5"
+              rx="5"
+              fill="rgba(6, 11, 24, 0.88)"
+              stroke="rgba(255, 159, 10, 0.55)"
+              strokeWidth="0.9"
+            />
+            <SvgText
+              x="32"
+              y="56.8"
+              fill="#FFFFFF"
+              fontSize="6.6"
+              fontWeight="800"
+              letterSpacing="0.5"
+              textAnchor="middle"
+            >
+              RADAR FOGO
+            </SvgText>
+          </G>
+        ) : null}
+      </Svg>
     </View>
   );
 }
@@ -342,6 +424,9 @@ interface FrpOrbitalCurveProps {
 }
 
 export function FrpOrbitalAreaChart({ spots }: FrpOrbitalCurveProps) {
+  const { width: winWidth } = useWindowDimensions();
+  const isMobile = winWidth < 600;
+
   // Agrupa os focos em 8 janelas temporais recentes (de -30 min até Agora)
   const series = useMemo(() => {
     const buckets = [
@@ -372,10 +457,10 @@ export function FrpOrbitalAreaChart({ spots }: FrpOrbitalCurveProps) {
     });
   }, [spots]);
 
-  const chartWidth = 680;
+  const chartWidth = isMobile ? 420 : 680;
   const chartHeight = 185;
-  const padLeft = 28;
-  const padRight = 28;
+  const padLeft = 24;
+  const padRight = 24;
   const padTop = 34;
   const padBottom = 42;
   const plotW = chartWidth - padLeft - padRight;
@@ -440,7 +525,7 @@ export function FrpOrbitalAreaChart({ spots }: FrpOrbitalCurveProps) {
           width="100%"
           height={chartHeight}
           viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-          preserveAspectRatio="none"
+          preserveAspectRatio="xMidYMid meet"
         >
           <Defs>
             <LinearGradient id="iosWeatherAreaGrad" x1="0" y1="0" x2="0" y2="1">
@@ -562,6 +647,9 @@ export function StateThermalRangeBars({
   selectedUF,
   onSelectUF,
 }: StateThermalRangeBarsProps) {
+  const { width: winWidth } = useWindowDimensions();
+  const isCompactMobile = winWidth < 520;
+
   const stateRows = useMemo(() => {
     const globalMaxFrp = Math.max(90, ...allSpots.map((s) => s.frpMW));
     const globalMinFrp = 15;
@@ -656,7 +744,12 @@ export function StateThermalRangeBars({
               accessibilityLabel={`Estado ${row.name}, ${row.count} focos, potência entre ${row.minFrp} e ${row.maxFrp} Megawatts`}
             >
               {/* Coluna UF + Nome */}
-              <View style={styles.forecastStateCol}>
+              <View
+                style={[
+                  styles.forecastStateCol,
+                  isCompactMobile && { width: 72 },
+                ]}
+              >
                 <Text style={styles.forecastUfCode}>{row.uf}</Text>
                 <Text style={styles.forecastUfName} numberOfLines={1}>
                   {row.name}
@@ -664,19 +757,33 @@ export function StateThermalRangeBars({
               </View>
 
               {/* Contagem + Ícone de severidade estilo Clima */}
-              <View style={styles.forecastIconCol}>
+              <View
+                style={[
+                  styles.forecastIconCol,
+                  isCompactMobile && { width: 46 },
+                ]}
+              >
                 <Ionicons
                   name={row.maxFrp >= 60 ? 'flame' : 'sunny'}
-                  size={16}
+                  size={15}
                   color={row.maxFrp >= 60 ? '#FF453A' : '#FF9F0A'}
                 />
                 <Text style={styles.forecastSpotsCount}>
-                  {row.count} {row.count === 1 ? 'foco' : 'focos'}
+                  {isCompactMobile
+                    ? `${row.count}`
+                    : `${row.count} ${row.count === 1 ? 'foco' : 'focos'}`}
                 </Text>
               </View>
 
               {/* Valor Mínimo FRP */}
-              <Text style={styles.forecastMinText}>{row.minFrp} MW</Text>
+              <Text
+                style={[
+                  styles.forecastMinText,
+                  isCompactMobile && { width: 38, fontSize: 10 },
+                ]}
+              >
+                {row.minFrp} MW
+              </Text>
 
               {/* Barra Cápsula com Gradiente Térmico estilo iOS Weather */}
               <View style={styles.forecastBarTrack}>
