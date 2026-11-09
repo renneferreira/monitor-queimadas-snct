@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
+  Easing,
   Linking,
   Pressable,
   ScrollView,
@@ -29,7 +31,6 @@ import {
   FireSpot,
   MapClusterItem,
   NORDESTE_STATES,
-  NordesteUF,
   buildGoogleMapsSpotUrl,
   clusterFireSpots,
 } from '../services/fireDataService';
@@ -41,40 +42,43 @@ import {
   InstitutionalCreditsCard,
   StateThermalRangeBars,
 } from '../components/IosWeatherWidgets';
+import {
+  DURATION_BASE,
+  RISK_LEVELS,
+  estimateRegionalClimate,
+  getAnimationDuration,
+  getRiskMetaFromSeverity,
+} from '../theme/tokens';
 
 function getSeverityColors(severity: FireSeverity) {
-  switch (severity) {
-    case 'critico':
-      return {
-        bg: '#FF453A',
-        soft: 'rgba(255, 69, 58, 0.20)',
-        label: 'Crítico (FRP Elevado)',
-      };
-    case 'alto':
-      return {
-        bg: '#FF9F0A',
-        soft: 'rgba(255, 159, 10, 0.20)',
-        label: 'Atenção Elevada',
-      };
-    default:
-      return {
-        bg: '#FFD60A',
-        soft: 'rgba(255, 214, 10, 0.18)',
-        label: 'Moderado',
-      };
-  }
+  const meta = getRiskMetaFromSeverity(severity, 1);
+  return {
+    bg: meta.color,
+    soft: meta.bgSoft,
+    label: meta.label,
+    icon: meta.icon,
+  };
 }
 
 /**
- * Hook de interpolação fluida de câmera (60 FPS com Cubic Ease-Out)
- * Garante transições suaves de zoom e deslocamento no mapa vetorial IBGE.
+ * Hook de interpolação suave de câmera (150–300 ms com Cubic Ease-Out)
+ * Respeita integralmente o modo "Reduzir animações" (durationMs = 0).
  */
-function useSmoothMapCamera(target: MapCameraState, durationMs = 420): MapCameraState {
+function useSmoothMapCamera(
+  target: MapCameraState,
+  durationMs = DURATION_BASE
+): MapCameraState {
   const [current, setCurrent] = useState<MapCameraState>(target);
   const currentRef = useRef<MapCameraState>(target);
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (durationMs <= 0) {
+      setCurrent(target);
+      currentRef.current = target;
+      return;
+    }
+
     const startCamera = { ...currentRef.current };
     const dLat = target.latitude - startCamera.latitude;
     const dLng = target.longitude - startCamera.longitude;
@@ -137,6 +141,7 @@ export default function MapaNordesteScreen() {
     spots,
     filteredSpots,
     isLoading,
+    reduceMotion,
     selectedUF,
     selectedMunicipality,
     selectedSpot,
@@ -149,11 +154,51 @@ export default function MapaNordesteScreen() {
     resetMapToNordeste,
   } = useFireMonitor();
 
-  // Câmera interpolada a 60 FPS para animações fluidas no radar
-  const smoothCamera = useSmoothMapCamera(mapCamera, 420);
+  // Câmera interpolada em 250 ms (DURATION_BASE) ou instantânea se reduceMotion = true
+  const smoothCamera = useSmoothMapCamera(
+    mapCamera,
+    getAnimationDuration(DURATION_BASE, reduceMotion)
+  );
 
-  // Estado local para destacar imediatamente o cluster/foco clicado com o nome da(s) cidade(s)
+  // Estado local para destacar o foco clicado e controlar divulgação progressiva dos detalhes técnicos
   const [clickedClusterId, setClickedClusterId] = useState<string | null>(null);
+  const [showTechnicalDetails, setShowTechnicalDetails] =
+    useState<boolean>(false);
+
+  // Clima e Nível de Risco Regional (Temperatura °C + Risco com Cor + Ícone + Texto)
+  const regionalClimate = useMemo(
+    () => estimateRegionalClimate(filteredSpots, selectedUF),
+    [filteredSpots, selectedUF]
+  );
+
+  // Animação única de entrada do Hero e preenchimento da barra de risco (250 ms, sem loops)
+  const heroFadeAnim = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
+  const riskBarWidthAnim = useRef(
+    new Animated.Value(reduceMotion ? regionalClimate.riskPercent : 0)
+  ).current;
+
+  useEffect(() => {
+    const dur = getAnimationDuration(DURATION_BASE, reduceMotion);
+    if (dur === 0) {
+      heroFadeAnim.setValue(1);
+      riskBarWidthAnim.setValue(regionalClimate.riskPercent);
+      return;
+    }
+    Animated.parallel([
+      Animated.timing(heroFadeAnim, {
+        toValue: 1,
+        duration: dur,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(riskBarWidthAnim, {
+        toValue: regionalClimate.riskPercent,
+        duration: dur,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+    ]).start();
+  }, [heroFadeAnim, riskBarWidthAnim, regionalClimate.riskPercent, reduceMotion]);
 
   const clusters = useMemo(
     () => clusterFireSpots(filteredSpots, mapCamera.zoom),
@@ -239,64 +284,105 @@ export default function MapaNordesteScreen() {
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
-      {/* 1. CARD DE MONITORAMENTO COMPACTO COM LOGO EM DESTAQUE (ADAPTADO PARA iOS, ANDROID & WEB) */}
-      <View style={styles.compactHeroCard}>
+      {/* 1. CARD DE RESUMO PRINCIPAL (HERO — RECEITAS 1 E 2 DA SKILL RADAR-FOGO-UI) */}
+      <Animated.View
+        style={[styles.compactHeroCard, { opacity: heroFadeAnim }]}
+      >
         <View style={styles.compactHeroMainRow}>
-          {/* Coluna Esquerda: Emblema Vetorial 3D Radar Fogo + Região e Condição Orbital */}
+          {/* Coluna Esquerda: Emblema Vetorial 3D + Cidade/Região + Nível de Risco (Cor + Ícone + Texto) */}
           <View style={styles.compactHeroBrandAndRegion}>
             <AppLogoEmblem size={isMobile ? 48 : 54} />
             <View style={styles.compactHeroLeft}>
               <View style={styles.heroTopPill}>
-                <Ionicons name="flame" size={11} color="#FF9500" />
+                <Ionicons name="flame" size={12} color="#FF9500" />
                 <Text style={styles.heroTopPillBrand}>RADAR FOGO</Text>
                 <Text style={styles.heroTopPillSep}>•</Text>
-                <Text style={styles.heroTopPillText}>
-                  MONITORAMENTO ORBITAL
-                </Text>
+                <Text style={styles.heroTopPillText}>RESUMO REGIONAL</Text>
               </View>
 
               <Text
                 style={[
                   styles.heroLocationName,
-                  isMobile && { fontSize: 18.5 },
+                  isMobile && { fontSize: 19 },
                 ]}
               >
                 {heroLocationTitle}
               </Text>
 
-              <Text style={styles.heroConditionText} numberOfLines={1}>
-                {activeSpot
-                  ? `Alerta ${
-                      activeSpot.severity === 'critico' ? 'Crítico' : 'Elevado'
-                    } • ${activeSpot.biome} (${activeSpot.satellite})`
-                  : 'Sem focos críticos no recorte selecionado'}
-              </Text>
+              {/* Selo de Risco Acessível: SEMPRE Cor + Ícone + Rótulo Textual */}
+              <View
+                style={[
+                  styles.heroRiskBadgeRow,
+                  {
+                    backgroundColor: regionalClimate.riskMeta.bgSoft,
+                    borderColor: regionalClimate.riskMeta.borderColor,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={regionalClimate.riskMeta.icon}
+                  size={15}
+                  color={regionalClimate.riskMeta.color}
+                />
+                <Text
+                  style={[
+                    styles.heroRiskBadgeTitle,
+                    { color: regionalClimate.riskMeta.color },
+                  ]}
+                >
+                  {regionalClimate.riskMeta.label}
+                </Text>
+                <Text style={styles.heroRiskBadgeDesc} numberOfLines={1}>
+                  • {regionalClimate.riskMeta.description}
+                </Text>
+              </View>
             </View>
           </View>
 
-          {/* Coluna Central: Contagem Compacta de Focos + Pico FRP */}
+          {/* Coluna Central: Temperatura Estimada (°C) + Contagem de Focos */}
           {isLoading ? (
             <View style={styles.heroSkeletonNum} />
           ) : (
-            <View style={styles.compactCountBox}>
-              <Text
-                style={[
-                  styles.heroCompactNumber,
-                  isMobile && { fontSize: 28, lineHeight: 32 },
-                ]}
-              >
-                {filteredSpots.length}
-              </Text>
-              <View style={styles.heroUnitCol}>
-                <Text style={styles.heroUnitTitle}>FOCOS ATIVOS</Text>
-                <Text style={styles.heroUnitSub}>
-                  Pico: {weatherHeroSummary.maxFrp.toFixed(1)} MW
+            <View style={styles.heroMetricsPair}>
+              {/* Bloco de Temperatura estilo App Tempo */}
+              <View style={styles.compactTempBox}>
+                <View style={styles.tempTitleRow}>
+                  <Ionicons
+                    name="thermometer-outline"
+                    size={16}
+                    color={regionalClimate.riskMeta.color}
+                  />
+                  <Text style={styles.heroTempNumber}>
+                    {regionalClimate.tempC}°C
+                  </Text>
+                </View>
+                <Text style={styles.heroTempSub}>
+                  Máx {regionalClimate.maxTempC}° • Mín {regionalClimate.minTempC}° • Umid.{' '}
+                  {regionalClimate.humidityPct}%
                 </Text>
+              </View>
+
+              {/* Bloco de Focos Ativos */}
+              <View style={styles.compactCountBox}>
+                <Text
+                  style={[
+                    styles.heroCompactNumber,
+                    isMobile && { fontSize: 26, lineHeight: 30 },
+                  ]}
+                >
+                  {filteredSpots.length}
+                </Text>
+                <View style={styles.heroUnitCol}>
+                  <Text style={styles.heroUnitTitle}>FOCOS ATIVOS</Text>
+                  <Text style={styles.heroUnitSub}>
+                    Pico: {weatherHeroSummary.maxFrp.toFixed(0)} MW
+                  </Text>
+                </View>
               </View>
             </View>
           )}
 
-          {/* Coluna Direita: Botões Rápidos */}
+          {/* Coluna Direita: Botões Rápidos (Alvos >= 44x44 px) */}
           <View style={styles.compactActionsCol}>
             <Pressable
               onPress={() => router.push('/(tabs)/consulta')}
@@ -305,11 +391,11 @@ export default function MapaNordesteScreen() {
                 pressed && styles.btnPressed,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Ir para busca por cidade em até 3 cliques"
+              accessibilityLabel="Buscar cidade em até 3 toques"
             >
-              <Ionicons name="search-outline" size={14} color="#64D2FF" />
+              <Ionicons name="search-outline" size={16} color="#64D2FF" />
               <Text style={styles.searchCityGlassBtnText}>
-                {isMobile ? 'Buscar Cidade' : 'Filtrar Cidade (≤ 3 cliques)'}
+                Buscar Cidade
               </Text>
             </Pressable>
 
@@ -324,15 +410,47 @@ export default function MapaNordesteScreen() {
                   pressed && styles.btnPressed,
                 ]}
                 accessibilityRole="button"
+                accessibilityLabel="Voltar para visão geral do Nordeste"
               >
-                <Ionicons name="refresh-outline" size={14} color="#FFD60A" />
-                <Text style={styles.resetFilterGlassText}>Visão NE</Text>
+                <Ionicons name="refresh-outline" size={16} color="#FFD60A" />
+                <Text style={styles.resetFilterGlassText}>Ver Nordeste</Text>
               </Pressable>
             ) : null}
           </View>
         </View>
 
-        {/* Segmented Control Compacto das 9 UFs */}
+        {/* RECEITA 2: BARRA DE NÍVEL DE RISCO ANIMADA UMA ÚNICA VEZ (250 ms) COM VALOR EM TEXTO */}
+        <View style={styles.heroRiskBarSection}>
+          <View style={styles.heroRiskBarHeader}>
+            <Text style={styles.heroRiskBarLabel}>
+              Índice de risco térmico na região
+            </Text>
+            <Text
+              style={[
+                styles.heroRiskBarValue,
+                { color: regionalClimate.riskMeta.color },
+              ]}
+            >
+              {regionalClimate.riskPercent}% ({regionalClimate.riskMeta.shortLabel})
+            </Text>
+          </View>
+          <View style={styles.heroRiskBarTrack}>
+            <Animated.View
+              style={[
+                styles.heroRiskBarFill,
+                {
+                  backgroundColor: regionalClimate.riskMeta.color,
+                  width: riskBarWidthAnim.interpolate({
+                    inputRange: [0, 100],
+                    outputRange: ['0%', '100%'],
+                  }),
+                },
+              ]}
+            />
+          </View>
+        </View>
+
+        {/* Segmented Control das 9 UFs (Alvos >= 44x44 px) */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -343,9 +461,10 @@ export default function MapaNordesteScreen() {
               setClickedClusterId(null);
               selectUF('TODOS');
             }}
-            style={[
+            style={({ pressed }) => [
               styles.segmentPill,
               selectedUF === 'TODOS' && styles.segmentPillActive,
+              pressed && styles.btnPressed,
             ]}
             accessibilityRole="button"
             accessibilityLabel="Mostrar todos os 9 estados do Nordeste"
@@ -370,9 +489,10 @@ export default function MapaNordesteScreen() {
                   setClickedClusterId(null);
                   selectUF(st.uf);
                 }}
-                style={[
+                style={({ pressed }) => [
                   styles.segmentPill,
                   isSelected && styles.segmentPillActive,
+                  pressed && styles.btnPressed,
                 ]}
                 accessibilityRole="button"
                 accessibilityLabel={`Filtrar estado ${st.name}, ${ufCount} focos ativos`}
@@ -389,7 +509,7 @@ export default function MapaNordesteScreen() {
             );
           })}
         </ScrollView>
-      </View>
+      </Animated.View>
 
       {/* 2. RADAR CARTOGRÁFICO OFICIAL IBGE (SEM SOBREPOSIÇÃO DE RODAPÉ E ADAPTADO PARA CELULAR iOS/ANDROID) */}
       <View style={styles.mapGlassCard}>
@@ -746,17 +866,16 @@ export default function MapaNordesteScreen() {
               })}
             </Svg>
 
-            {/* Controles de Zoom Dark Glass Compactos */}
+            {/* Controles de Zoom Dark Glass (>= 44x44 px em todas as telas) */}
             <View style={styles.mapControlsOverlay}>
               <Pressable
                 onPress={zoomIn}
                 style={({ pressed }) => [
                   styles.zoomControlButton,
-                  isMobile && styles.zoomControlButtonMobile,
                   pressed && styles.btnPressed,
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel="Aumentar zoom no radar"
+                accessibilityLabel="Aumentar zoom no mapa"
               >
                 <Text style={styles.zoomButtonSymbol}>+</Text>
               </Pressable>
@@ -765,11 +884,10 @@ export default function MapaNordesteScreen() {
                 onPress={zoomOut}
                 style={({ pressed }) => [
                   styles.zoomControlButton,
-                  isMobile && styles.zoomControlButtonMobile,
                   pressed && styles.btnPressed,
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel="Diminuir zoom no radar"
+                accessibilityLabel="Diminuir zoom no mapa"
               >
                 <Text style={styles.zoomButtonSymbol}>−</Text>
               </Pressable>
@@ -781,19 +899,18 @@ export default function MapaNordesteScreen() {
                 }}
                 style={({ pressed }) => [
                   styles.resetZoomButton,
-                  isMobile && styles.zoomControlButtonMobile,
                   pressed && styles.btnPressed,
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel="Centralizar radar na Região Nordeste"
+                accessibilityLabel="Centralizar mapa na Região Nordeste"
               >
-                <Ionicons name="locate-outline" size={18} color="#64D2FF" />
+                <Ionicons name="locate-outline" size={20} color="#64D2FF" />
               </Pressable>
             </View>
           </View>
         )}
 
-        {/* BARRA DE RODAPÉ DO RADAR (SEPARADA DO MAPA — JAMAIS SOBREPÕE OS FOCOS OU ESTADOS) */}
+        {/* BARRA DE RODAPÉ DO RADAR (SEPARADA DO MAPA — LEGENDA COM COR + ÍCONE + TEXTO) */}
         <View style={styles.mapTelemetryFooter}>
           <Pressable
             onPress={() =>
@@ -810,34 +927,31 @@ export default function MapaNordesteScreen() {
               pressed && styles.btnPressed,
             ]}
             accessibilityRole="link"
-            accessibilityLabel="Abrir coordenadas atuais no Google Maps"
+            accessibilityLabel="Abrir localização selecionada no Google Maps"
           >
-            <Ionicons name="location-outline" size={14} color="#64D2FF" />
+            <Ionicons name="location-outline" size={16} color="#64D2FF" />
             <Text style={styles.mapTelemetryText} numberOfLines={1}>
               {activeSpot
                 ? `${activeSpot.municipality} (${activeSpot.uf}): ${activeSpot.latitude.toFixed(3)}°, ${activeSpot.longitude.toFixed(3)}° (Google Maps ↗)`
                 : `Centro: ${mapCamera.latitude.toFixed(2)}°, ${mapCamera.longitude.toFixed(2)}° (Google Maps ↗)`}
             </Text>
           </Pressable>
+
+          {/* Legenda Acessível: Cor + Ícone + Rótulo Textual (4 níveis de risco) */}
           <View style={styles.legendRow}>
-            <View style={styles.legendItem}>
-              <View
-                style={[styles.legendDot, { backgroundColor: '#FFD60A' }]}
-              />
-              <Text style={styles.legendLabel}>Moderado</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View
-                style={[styles.legendDot, { backgroundColor: '#FF9F0A' }]}
-              />
-              <Text style={styles.legendLabel}>Alto</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View
-                style={[styles.legendDot, { backgroundColor: '#FF453A' }]}
-              />
-              <Text style={styles.legendLabel}>Crítico</Text>
-            </View>
+            {(
+              [
+                RISK_LEVELS.baixo,
+                RISK_LEVELS.medio,
+                RISK_LEVELS.alto,
+                RISK_LEVELS.critico,
+              ] as const
+            ).map((lvl) => (
+              <View key={lvl.key} style={styles.legendItem}>
+                <Ionicons name={lvl.icon} size={13} color={lvl.color} />
+                <Text style={styles.legendLabel}>{lvl.shortLabel}</Text>
+              </View>
+            ))}
           </View>
         </View>
       </View>
@@ -862,12 +976,12 @@ export default function MapaNordesteScreen() {
         }}
       />
 
-      {/* 6. INSPEÇÃO DETALHADA DO FOCO SELECIONADO */}
+      {/* 6. INSPEÇÃO DO FOCO SELECIONADO (COM DIVULGAÇÃO PROGRESSIVA PARA TDAH/TEA) */}
       <View style={styles.card}>
         <View style={styles.spotDetailHeader}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.sectionEyebrow}>
-              TELEMETRIA DE PRECISÃO • FOCO SELECIONADO NO RADAR
+              FOCO SELECIONADO NO MAPA • RESUMO E DETALHES
             </Text>
             <Text style={styles.spotDetailTitle}>
               {activeSpot
@@ -885,6 +999,11 @@ export default function MapaNordesteScreen() {
                 },
               ]}
             >
+              <Ionicons
+                name={getSeverityColors(activeSpot.severity).icon}
+                size={15}
+                color={getSeverityColors(activeSpot.severity).bg}
+              />
               <Text
                 style={[
                   styles.severityBadgeText,
@@ -900,86 +1019,140 @@ export default function MapaNordesteScreen() {
         {isLoading ? (
           <View style={styles.skeletonSpotDetails} />
         ) : activeSpot ? (
-          <View style={styles.telemetryTable}>
-            <View style={styles.telemetryCell}>
-              <Text style={styles.telemetryKey}>Fonte Oficial & Latência</Text>
-              <Text style={styles.telemetryValue}>
-                {activeSpot.source === 'INPE_BDQUEIMADAS'
-                  ? 'INPE BDQueimadas (Ciclo 10 min)'
-                  : 'CENSIPAM Painel do Fogo (Ciclo 30 min)'}
+          <View style={styles.progressiveSpotContainer}>
+            {/* Resumo Simples Visível Primeiro */}
+            <View style={styles.spotSimpleSummaryRow}>
+              <Text style={styles.spotSimpleSummaryText}>
+                Bioma <Text style={styles.spotBold}>{activeSpot.biome}</Text> •{' '}
+                Potência de <Text style={styles.spotBold}>{activeSpot.frpMW.toFixed(1)} MW</Text>{' '}
+                • {activeSpot.daysWithoutRain} dias sem chuva
               </Text>
-            </View>
 
-            <View style={styles.telemetryCell}>
-              <Text style={styles.telemetryKey}>Satélite & Passagem</Text>
-              <Text style={styles.telemetryValueMono}>
-                {activeSpot.satellite} • há {activeSpot.minutesAgo} min
-              </Text>
-            </View>
-
-            <View style={styles.telemetryCell}>
-              <Text style={styles.telemetryKey}>Bioma Predominante</Text>
-              <Text style={styles.telemetryValue}>{activeSpot.biome}</Text>
-            </View>
-
-            <View style={styles.telemetryCell}>
-              <Text style={styles.telemetryKey}>Potência Radiativa (FRP)</Text>
-              <Text style={styles.telemetryValueMono}>
-                {activeSpot.frpMW.toFixed(1)} MW • Confiança{' '}
-                {activeSpot.confidencePercent}%
-              </Text>
-            </View>
-
-            <View style={styles.telemetryCell}>
-              <Text style={styles.telemetryKey}>Estiagem & Risco de Fogo</Text>
-              <Text style={styles.telemetryValueMono}>
-                {activeSpot.daysWithoutRain} dias sem chuva • Índice{' '}
-                {(activeSpot.fireRiskIndex * 100).toFixed(0)}%
-              </Text>
-            </View>
-
-            <View style={styles.telemetryCell}>
-              <Text style={styles.telemetryKey}>Coordenadas & Código IBGE</Text>
-              <Pressable
-                onPress={() =>
-                  Linking.openURL(
-                    buildGoogleMapsSpotUrl(
-                      activeSpot.latitude,
-                      activeSpot.longitude,
-                      15
+              <View style={styles.spotPrimaryActionsRow}>
+                <Pressable
+                  onPress={() =>
+                    Linking.openURL(
+                      buildGoogleMapsSpotUrl(
+                        activeSpot.latitude,
+                        activeSpot.longitude,
+                        15
+                      )
                     )
-                  )
-                }
-                style={({ pressed }) => [
-                  styles.googleMapsCoordLink,
-                  pressed && styles.btnPressed,
-                ]}
-                accessibilityRole="link"
-                accessibilityLabel={`Abrir foco de ${activeSpot.municipality} nas coordenadas ${activeSpot.latitude.toFixed(4)}, ${activeSpot.longitude.toFixed(4)} no Google Maps`}
-              >
-                <Text style={styles.telemetryValueMonoUnderline}>
-                  {activeSpot.latitude.toFixed(4)}°,{' '}
-                  {activeSpot.longitude.toFixed(4)}° • IBGE{' '}
-                  {activeSpot.ibgeCode}
-                </Text>
-                <View style={styles.gmapsBadge}>
+                  }
+                  style={({ pressed }) => [
+                    styles.gmapsBadge,
+                    pressed && styles.btnPressed,
+                  ]}
+                  accessibilityRole="link"
+                  accessibilityLabel={`Abrir localização de ${activeSpot.municipality} no Google Maps`}
+                >
                   <Ionicons
                     name="navigate-circle-outline"
-                    size={15}
+                    size={18}
                     color="#30D158"
                   />
                   <Text style={styles.gmapsBadgeText}>
-                    Consultar Foco no Google Maps ↗
+                    Ver Foco no Google Maps ↗
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => setShowTechnicalDetails((prev) => !prev)}
+                  style={({ pressed }) => [
+                    styles.expandDetailsBtn,
+                    pressed && styles.btnPressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: showTechnicalDetails }}
+                  accessibilityLabel={
+                    showTechnicalDetails
+                      ? 'Ocultar detalhes técnicos do satélite'
+                      : 'Ver detalhes técnicos do satélite'
+                  }
+                >
+                  <Ionicons
+                    name={
+                      showTechnicalDetails
+                        ? 'chevron-up-circle-outline'
+                        : 'chevron-down-circle-outline'
+                    }
+                    size={18}
+                    color="#64D2FF"
+                  />
+                  <Text style={styles.expandDetailsBtnText}>
+                    {showTechnicalDetails
+                      ? 'Ocultar ficha técnica'
+                      : 'Ver ficha técnica completa'}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Detalhes Técnicos Expansíveis ao Toque (Divulgação Progressiva) */}
+            {showTechnicalDetails ? (
+              <View style={styles.telemetryTable}>
+                <View style={styles.telemetryCell}>
+                  <Text style={styles.telemetryKey}>Fonte Oficial & Ciclo</Text>
+                  <Text style={styles.telemetryValue}>
+                    {activeSpot.source === 'INPE_BDQUEIMADAS'
+                      ? 'INPE BDQueimadas (10 min)'
+                      : 'CENSIPAM Painel do Fogo (30 min)'}
                   </Text>
                 </View>
-              </Pressable>
-            </View>
+
+                <View style={styles.telemetryCell}>
+                  <Text style={styles.telemetryKey}>Satélite & Passagem</Text>
+                  <Text style={styles.telemetryValueMono}>
+                    {activeSpot.satellite} • há {activeSpot.minutesAgo} min
+                  </Text>
+                </View>
+
+                <View style={styles.telemetryCell}>
+                  <Text style={styles.telemetryKey}>Potência Radiativa (FRP)</Text>
+                  <Text style={styles.telemetryValueMono}>
+                    {activeSpot.frpMW.toFixed(1)} MW • Confiança{' '}
+                    {activeSpot.confidencePercent}%
+                  </Text>
+                </View>
+
+                <View style={styles.telemetryCell}>
+                  <Text style={styles.telemetryKey}>Coordenadas & Código IBGE</Text>
+                  <Text style={styles.telemetryValueMono}>
+                    {activeSpot.latitude.toFixed(4)}°,{' '}
+                    {activeSpot.longitude.toFixed(4)}° • IBGE{' '}
+                    {activeSpot.ibgeCode}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
           </View>
         ) : (
-          <Text style={styles.emptyStateText}>
-            Não há focos registrados neste município no ciclo atual. Toque em
-            &quot;Visão Geral NE&quot; para retornar ao panorama regional.
-          </Text>
+          <View style={styles.calmEmptyBox}>
+            <Ionicons
+              name="shield-checkmark-outline"
+              size={24}
+              color="#30D158"
+            />
+            <Text style={styles.emptyStateText}>
+              Nenhum foco registrado neste recorte no ciclo atual.
+            </Text>
+            <Pressable
+              onPress={() => {
+                setClickedClusterId(null);
+                resetMapToNordeste();
+              }}
+              style={({ pressed }) => [
+                styles.resetFilterGlassBtn,
+                pressed && styles.btnPressed,
+              ]}
+              accessibilityRole="button"
+            >
+              <Ionicons name="refresh-outline" size={16} color="#FFD60A" />
+              <Text style={styles.resetFilterGlassText}>
+                Voltar para Visão Nordeste
+              </Text>
+            </Pressable>
+          </View>
         )}
       </View>
 
@@ -1065,11 +1238,88 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     letterSpacing: -0.4,
   },
-  heroConditionText: {
+  heroRiskBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    flexWrap: 'wrap',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 2,
+  },
+  heroRiskBadgeTitle: {
+    fontFamily: APPLE_CALM_THEME.fonts.heading,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  heroRiskBadgeDesc: {
     fontFamily: APPLE_CALM_THEME.fonts.body,
     fontSize: 12,
-    fontWeight: '600',
-    color: '#FFD60A',
+    color: '#CBD5E1',
+  },
+  heroMetricsPair: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  compactTempBox: {
+    backgroundColor: 'rgba(8, 13, 26, 0.55)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    gap: 2,
+  },
+  tempTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  heroTempNumber: {
+    fontFamily: APPLE_CALM_THEME.fonts.heading,
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#F8FAFC',
+  },
+  heroTempSub: {
+    fontFamily: APPLE_CALM_THEME.fonts.mono,
+    fontSize: 11,
+    color: '#CBD5E1',
+  },
+  heroRiskBarSection: {
+    gap: 5,
+    paddingTop: 2,
+  },
+  heroRiskBarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  heroRiskBarLabel: {
+    fontFamily: APPLE_CALM_THEME.fonts.body,
+    fontSize: 12,
+    color: '#CBD5E1',
+    fontWeight: '500',
+  },
+  heroRiskBarValue: {
+    fontFamily: APPLE_CALM_THEME.fonts.mono,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  heroRiskBarTrack: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    overflow: 'hidden',
+  },
+  heroRiskBarFill: {
+    height: '100%',
+    borderRadius: 4,
   },
   compactCountBox: {
     flexDirection: 'row',
@@ -1084,11 +1334,11 @@ const styles = StyleSheet.create({
   },
   heroCompactNumber: {
     fontFamily: APPLE_CALM_THEME.fonts.heading,
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -1,
-    lineHeight: 38,
+    lineHeight: 36,
   },
   heroUnitCol: {
     justifyContent: 'center',
@@ -1120,10 +1370,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   searchCityGlassBtn: {
-    minHeight: 36,
-    paddingHorizontal: 13,
-    borderRadius: 999,
-    backgroundColor: 'rgba(10, 132, 255, 0.22)',
+    minHeight: 44,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(10, 132, 255, 0.20)',
     borderWidth: 1,
     borderColor: 'rgba(100, 210, 255, 0.45)',
     flexDirection: 'row',
@@ -1132,42 +1382,43 @@ const styles = StyleSheet.create({
   },
   searchCityGlassBtnText: {
     fontFamily: APPLE_CALM_THEME.fonts.body,
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: '700',
     color: '#64D2FF',
   },
   resetFilterGlassBtn: {
-    minHeight: 36,
-    paddingHorizontal: 12,
-    borderRadius: 999,
+    minHeight: 44,
+    paddingHorizontal: 14,
+    borderRadius: 12,
     backgroundColor: 'rgba(255, 214, 10, 0.14)',
     borderWidth: 1,
     borderColor: 'rgba(255, 214, 10, 0.35)',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
   resetFilterGlassText: {
     fontFamily: APPLE_CALM_THEME.fonts.body,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: '#FFD60A',
   },
   btnPressed: {
-    opacity: 0.75,
+    opacity: 0.85,
+    transform: [{ scale: 0.98 }],
   },
   segmentedScroll: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
     paddingTop: 2,
   },
   segmentPill: {
-    minHeight: 34,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    minHeight: 44,
+    paddingHorizontal: 14,
+    borderRadius: 12,
     backgroundColor: 'rgba(9, 15, 30, 0.65)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.11)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1313,25 +1564,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   zoomControlButton: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    backgroundColor: 'rgba(15, 24, 46, 0.88)',
+    backgroundColor: 'rgba(15, 24, 46, 0.90)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  zoomControlButtonMobile: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-  },
   resetZoomButton: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    backgroundColor: 'rgba(15, 24, 46, 0.88)',
+    backgroundColor: 'rgba(15, 24, 46, 0.90)',
     borderWidth: 1,
     borderColor: 'rgba(100, 210, 255, 0.35)',
     justifyContent: 'center',
@@ -1347,7 +1593,7 @@ const styles = StyleSheet.create({
   mapTelemetryFooter: {
     backgroundColor: 'rgba(9, 15, 29, 0.95)',
     paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingVertical: 8,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.11)',
     flexDirection: 'row',
@@ -1358,42 +1604,39 @@ const styles = StyleSheet.create({
   },
   mapTelemetryText: {
     fontFamily: APPLE_CALM_THEME.fonts.mono,
-    fontSize: 11,
+    fontSize: 11.5,
     color: '#64D2FF',
     textDecorationLine: 'underline',
     flexShrink: 1,
   },
   radarCoordLinkBtn: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingVertical: 2,
+    gap: 6,
+    paddingVertical: 4,
     flexShrink: 1,
   },
   legendRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 12,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-  },
-  legendDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
+    gap: 4,
   },
   legendLabel: {
     fontFamily: APPLE_CALM_THEME.fonts.body,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     color: APPLE_CALM_THEME.colors.textSecondary,
   },
   card: {
     backgroundColor: APPLE_CALM_THEME.colors.card,
-    borderRadius: APPLE_CALM_THEME.radius.card,
+    borderRadius: 20,
     padding: 18,
     borderWidth: 1,
     borderColor: APPLE_CALM_THEME.colors.border,
@@ -1404,27 +1647,74 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   spotDetailTitle: {
     fontFamily: APPLE_CALM_THEME.fonts.heading,
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: '700',
     color: APPLE_CALM_THEME.colors.textPrimary,
     marginTop: 4,
   },
   severityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: APPLE_CALM_THEME.radius.pill,
+    borderRadius: 999,
   },
   severityBadgeText: {
     fontFamily: APPLE_CALM_THEME.fonts.body,
     fontSize: 12,
     fontWeight: '700',
   },
+  progressiveSpotContainer: {
+    gap: 12,
+  },
+  spotSimpleSummaryRow: {
+    gap: 12,
+  },
+  spotSimpleSummaryText: {
+    fontFamily: APPLE_CALM_THEME.fonts.body,
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#CBD5E1',
+  },
+  spotBold: {
+    fontWeight: '700',
+    color: '#F8FAFC',
+  },
+  spotPrimaryActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  expandDetailsBtn: {
+    minHeight: 44,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(10, 132, 255, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 210, 255, 0.35)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  expandDetailsBtnText: {
+    fontFamily: APPLE_CALM_THEME.fonts.body,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64D2FF',
+  },
+  calmEmptyBox: {
+    paddingVertical: 12,
+    gap: 10,
+    alignItems: 'flex-start',
+  },
   skeletonSpotDetails: {
-    height: 140,
+    height: 96,
     borderRadius: 12,
     backgroundColor: APPLE_CALM_THEME.colors.skeletonBase,
   },
@@ -1432,15 +1722,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
+    paddingTop: 4,
   },
   telemetryCell: {
     flex: 1,
-    minWidth: 220,
+    minWidth: 200,
     backgroundColor: 'rgba(9, 14, 28, 0.55)',
     borderRadius: 14,
     padding: 13,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.07)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   telemetryKey: {
     fontFamily: APPLE_CALM_THEME.fonts.body,
@@ -1461,32 +1752,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#64D2FF',
   },
-  googleMapsCoordLink: {
-    gap: 7,
-    marginTop: 2,
-  },
-  telemetryValueMonoUnderline: {
-    fontFamily: APPLE_CALM_THEME.fonts.mono,
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#64D2FF',
-    textDecorationLine: 'underline',
-  },
   gmapsBadge: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    gap: 5,
+    gap: 6,
     backgroundColor: 'rgba(48, 209, 88, 0.16)',
     borderWidth: 1,
     borderColor: 'rgba(48, 209, 88, 0.38)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
   },
   gmapsBadgeText: {
     fontFamily: APPLE_CALM_THEME.fonts.body,
-    fontSize: 11.5,
+    fontSize: 13,
     fontWeight: '700',
     color: '#30D158',
   },
@@ -1494,6 +1775,6 @@ const styles = StyleSheet.create({
     fontFamily: APPLE_CALM_THEME.fonts.body,
     fontSize: 14,
     color: APPLE_CALM_THEME.colors.textSecondary,
-    lineHeight: 20,
+    lineHeight: 21,
   },
 });

@@ -8,6 +8,7 @@ import React, {
   useState,
 } from 'react';
 import {
+  AccessibilityInfo,
   Platform,
   Pressable,
   SafeAreaView,
@@ -18,6 +19,7 @@ import {
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
 import {
   FilterEfficiencyLog,
   FireSpot,
@@ -29,6 +31,7 @@ import {
   fetchSynchronizedFireData,
 } from './services/fireDataService';
 import { AppLogoEmblem } from './components/IosWeatherWidgets';
+import { RADAR_FOGO_TOKENS } from './theme/tokens';
 
 /**
  * Tokens de Design — Apple iOS 18 "Tempo" (Weather) Dark Glass & Orbital Telemetry
@@ -89,6 +92,9 @@ interface FireMonitorContextValue {
   filteredSpots: FireSpot[];
   metadata: SyncMetadata;
   isLoading: boolean;
+  syncError: string | null;
+  reduceMotion: boolean;
+  toggleReduceMotion: () => void;
   selectedUF: NordesteUF | 'TODOS';
   selectedMunicipality: string | null;
   selectedSpot: FireSpot | null;
@@ -134,6 +140,8 @@ export default function RootLayout() {
   const isMobile = winWidth < 600;
   const [spots, setSpots] = useState<FireSpot[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [reduceMotion, setReduceMotion] = useState<boolean>(false);
   const [selectedUF, setSelectedUF] = useState<NordesteUF | 'TODOS'>('TODOS');
   const [selectedMunicipality, setSelectedMunicipality] = useState<
     string | null
@@ -189,8 +197,38 @@ export default function RootLayout() {
     censipamLatencyMinutes: 30,
   });
 
-  // Injeção de Fontes Contrastantes (Outfit, Lexend, Plus Jakarta Sans, JetBrains Mono) + Gradiente Atmosférico iOS Weather na Web
+  // Detecção automática de preferência de Movimento Reduzido (Web & Nativo) + Fontes Limpas
   useEffect(() => {
+    let isMounted = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((enabled) => {
+        if (isMounted && enabled) {
+          setReduceMotion(true);
+        }
+      })
+      .catch(() => {});
+
+    const sub = AccessibilityInfo.addEventListener?.(
+      'reduceMotionChanged',
+      (enabled) => {
+        if (isMounted) setReduceMotion(Boolean(enabled));
+      }
+    );
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      try {
+        const stored = window.localStorage?.getItem('radar_fogo_reduce_motion');
+        if (stored === '1') {
+          setReduceMotion(true);
+        } else if (stored === null && window.matchMedia) {
+          const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+          if (mq.matches) setReduceMotion(true);
+        }
+      } catch {
+        // Ignora bloqueios de storage
+      }
+    }
+
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       document.title = 'Radar Fogo — Monitor Orbital de Queimadas | IFPI Floriano (TDS-3)';
       const existing = document.getElementById('snct-ios-weather-fonts');
@@ -199,7 +237,7 @@ export default function RootLayout() {
         link.id = 'snct-ios-weather-fonts';
         link.rel = 'stylesheet';
         link.href =
-          'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&family=Lexend:wght@500;600;700&family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap';
+          'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap';
         document.head.appendChild(link);
       }
 
@@ -209,7 +247,7 @@ export default function RootLayout() {
         styleEl.id = 'snct-ios-weather-glass-css';
         styleEl.textContent = `
           body, #root {
-            background: radial-gradient(circle at 50% 0%, #19294B 0%, #0B1325 48%, #050912 100%) !important;
+            background: radial-gradient(circle at 50% 0%, #131F3A 0%, #0B1325 48%, #070C18 100%) !important;
             color: #F8FAFC;
           }
           ::-webkit-scrollbar {
@@ -227,6 +265,28 @@ export default function RootLayout() {
         document.head.appendChild(styleEl);
       }
     }
+
+    return () => {
+      isMounted = false;
+      sub?.remove?.();
+    };
+  }, []);
+
+  const toggleReduceMotion = useCallback(() => {
+    setReduceMotion((prev) => {
+      const next = !prev;
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        try {
+          window.localStorage?.setItem(
+            'radar_fogo_reduce_motion',
+            next ? '1' : '0'
+          );
+        } catch {
+          // Ignora bloqueios de storage
+        }
+      }
+      return next;
+    });
   }, []);
 
   const recordSkeletonMount = useCallback(
@@ -254,25 +314,30 @@ export default function RootLayout() {
   const loadData = useCallback(
     async (withSkeletonDelay = true) => {
       const startMs = Date.now();
+      setSyncError(null);
       if (withSkeletonDelay) {
         setIsLoading(true);
       }
 
-      const [result] = await Promise.all([
-        fetchSynchronizedFireData(),
-        new Promise((resolve) =>
-          setTimeout(resolve, withSkeletonDelay ? 420 : 120)
-        ),
-      ]);
+      try {
+        const leadTime = reduceMotion ? 80 : withSkeletonDelay ? 250 : 100;
+        const [result] = await Promise.all([
+          fetchSynchronizedFireData(),
+          new Promise((resolve) => setTimeout(resolve, leadTime)),
+        ]);
 
-      setSpots(result.spots);
-      setMetadata(result.metadata);
-      setIsLoading(false);
+        setSpots(result.spots);
+        setMetadata(result.metadata);
+        setIsLoading(false);
 
-      const elapsed = Date.now() - startMs;
-      recordSkeletonMount('Mapa', withSkeletonDelay ? 420 : 120, elapsed);
+        const elapsed = Date.now() - startMs;
+        recordSkeletonMount('Mapa', leadTime, elapsed);
+      } catch {
+        setSyncError('Não foi possível atualizar. Tentar de novo');
+        setIsLoading(false);
+      }
     },
-    [recordSkeletonMount]
+    [recordSkeletonMount, reduceMotion]
   );
 
   useEffect(() => {
@@ -425,6 +490,9 @@ export default function RootLayout() {
       filteredSpots,
       metadata,
       isLoading,
+      syncError,
+      reduceMotion,
+      toggleReduceMotion,
       selectedUF,
       selectedMunicipality,
       selectedSpot,
@@ -448,6 +516,9 @@ export default function RootLayout() {
       filteredSpots,
       metadata,
       isLoading,
+      syncError,
+      reduceMotion,
+      toggleReduceMotion,
       selectedUF,
       selectedMunicipality,
       selectedSpot,
@@ -472,28 +543,26 @@ export default function RootLayout() {
       <SafeAreaView style={styles.safeArea}>
         <StatusBar
           style="light"
-          backgroundColor={APPLE_CALM_THEME.colors.background}
+          backgroundColor={RADAR_FOGO_TOKENS.colors.background}
         />
 
-        {/* BARRA SUPERIOR DARK GLASS CLEAN: LOGO + STATUS DE TELEMETRIA */}
+        {/* BARRA SUPERIOR DARK GLASS: LOGO + REDUZIR ANIMAÇÕES + SINCRONIZAÇÃO (Alvos >= 44px) */}
         <View
           style={[
             styles.transparencyBanner,
-            isMobile && { paddingHorizontal: 12, paddingVertical: 6 },
+            isMobile && { paddingHorizontal: 12, paddingVertical: 8 },
           ]}
           accessibilityRole="header"
-          accessibilityLabel="Cabeçalho do Radar Fogo - Monitor Orbital de Queimadas"
+          accessibilityLabel="Cabeçalho do Radar Fogo - Monitor de Queimadas e Temperaturas"
         >
           <View style={styles.bannerTopRow}>
             <View style={styles.brandAndSourceRow}>
-              <AppLogoEmblem size={isMobile ? 40 : 44} />
+              <AppLogoEmblem size={44} />
               <View style={styles.brandTextCol}>
                 <View style={styles.brandTitleInline}>
                   <Text style={styles.appBrandName}>Radar Fogo</Text>
                   <View style={styles.ifpiHeaderBadge}>
-                    <Text style={styles.ifpiHeaderBadgeText}>
-                      Monitor Orbital NE
-                    </Text>
+                    <Text style={styles.ifpiHeaderBadgeText}>Nordeste</Text>
                   </View>
                 </View>
                 <View style={styles.sourceBadgeRow}>
@@ -502,40 +571,82 @@ export default function RootLayout() {
                     style={styles.transparencySourceText}
                     numberOfLines={1}
                   >
-                    {isMobile
-                      ? 'Telemetria ativa (10–30m)'
-                      : 'Telemetria orbital ativa (10–30 min) • Nordeste'}
+                    {isLoading
+                      ? 'Atualizando dados...'
+                      : `Atualizado às ${metadata.lastSyncFormatted}`}
                   </Text>
                 </View>
               </View>
             </View>
 
+            <View style={styles.headerActionsRow}>
+              {/* Interruptor Acessível "Reduzir animações" (>= 44x44 px) */}
+              <Pressable
+                onPress={toggleReduceMotion}
+                style={({ pressed }) => [
+                  styles.motionToggleBtn,
+                  reduceMotion && styles.motionToggleBtnActive,
+                  pressed && styles.syncButtonPressed,
+                ]}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: reduceMotion }}
+                accessibilityLabel={
+                  reduceMotion
+                    ? 'Reduzir animações ativado. Toque para permitir animações suaves'
+                    : 'Reduzir animações desativado. Toque para desativar animações'
+                }
+              >
+                <Ionicons
+                  name={reduceMotion ? 'pause-circle' : 'sparkles-outline'}
+                  size={16}
+                  color={reduceMotion ? '#30D158' : '#CBD5E1'}
+                />
+                <Text
+                  style={[
+                    styles.motionToggleText,
+                    reduceMotion && styles.motionToggleTextActive,
+                  ]}
+                >
+                  {isMobile
+                    ? reduceMotion
+                      ? 'Sem anim.'
+                      : 'Animações'
+                    : reduceMotion
+                      ? 'Animações reduzidas'
+                      : 'Reduzir animações'}
+                </Text>
+              </Pressable>
+
+              {/* Botão Atualizar Dados (>= 44x44 px) */}
+              <Pressable
+                onPress={() => loadData(true)}
+                style={({ pressed }) => [
+                  styles.syncButton,
+                  pressed && styles.syncButtonPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Atualizar dados de queimadas e temperatura agora"
+              >
+                <Ionicons name="refresh" size={16} color="#64D2FF" />
+                <Text style={styles.syncTimestampText}>
+                  {isLoading ? 'Atualizando...' : 'Atualizar'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Mensagem de erro calma e acionável caso a sincronização falhe */}
+          {syncError ? (
             <Pressable
               onPress={() => loadData(true)}
-              style={({ pressed }) => [
-                styles.syncButton,
-                isMobile && { minHeight: 32, paddingHorizontal: 10 },
-                pressed && styles.syncButtonPressed,
-              ]}
+              style={styles.calmErrorBanner}
               accessibilityRole="button"
-              accessibilityLabel="Atualizar dados de queimadas agora"
+              accessibilityLabel="Não foi possível atualizar. Tentar de novo"
             >
-              <Text
-                style={[
-                  styles.syncTimestampText,
-                  isMobile && { fontSize: 10.5 },
-                ]}
-              >
-                {isLoading
-                  ? isMobile
-                    ? 'Sincronizando...'
-                    : 'Sincronizando satélites...'
-                  : isMobile
-                    ? `Sync ${metadata.lastSyncFormatted}`
-                    : `Sincronizado às ${metadata.lastSyncFormatted}`}
-              </Text>
+              <Ionicons name="alert-circle-outline" size={18} color="#FFD60A" />
+              <Text style={styles.calmErrorText}>{syncError}</Text>
             </Pressable>
-          </View>
+          ) : null}
         </View>
 
         <View style={styles.contentContainer}>
@@ -627,25 +738,75 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: APPLE_CALM_THEME.colors.textMuted,
   },
+  headerActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  motionToggleBtn: {
+    minHeight: 44,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: RADAR_FOGO_TOKENS.colors.glass,
+    borderWidth: 1,
+    borderColor: RADAR_FOGO_TOKENS.colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  motionToggleBtnActive: {
+    backgroundColor: RADAR_FOGO_TOKENS.colors.syncGreenSoft,
+    borderColor: 'rgba(48, 209, 88, 0.45)',
+  },
+  motionToggleText: {
+    fontFamily: RADAR_FOGO_TOKENS.fonts.family,
+    fontSize: 12,
+    fontWeight: '600',
+    color: RADAR_FOGO_TOKENS.colors.textSecondary,
+  },
+  motionToggleTextActive: {
+    color: '#30D158',
+    fontWeight: '700',
+  },
   syncButton: {
-    minHeight: 36,
+    minHeight: 44,
     paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: APPLE_CALM_THEME.radius.pill,
-    backgroundColor: APPLE_CALM_THEME.colors.appleBlueSoft,
+    borderRadius: 12,
+    backgroundColor: RADAR_FOGO_TOKENS.colors.accentBlueSoft,
     borderWidth: 1,
     borderColor: 'rgba(100, 210, 255, 0.32)',
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 6,
   },
   syncButtonPressed: {
-    opacity: 0.78,
+    opacity: 0.85,
+    transform: [{ scale: 0.98 }],
   },
   syncTimestampText: {
-    fontFamily: APPLE_CALM_THEME.fonts.mono,
-    fontSize: 11.5,
+    fontFamily: RADAR_FOGO_TOKENS.fonts.family,
+    fontSize: 12,
+    fontWeight: '700',
+    color: RADAR_FOGO_TOKENS.colors.accentCyan,
+  },
+  calmErrorBanner: {
+    marginTop: 8,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 214, 10, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 214, 10, 0.35)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  calmErrorText: {
+    fontFamily: RADAR_FOGO_TOKENS.fonts.family,
+    fontSize: 13,
     fontWeight: '600',
-    color: APPLE_CALM_THEME.colors.appleCyan,
+    color: '#FFD60A',
   },
   contentContainer: {
     flex: 1,

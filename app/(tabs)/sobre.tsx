@@ -13,9 +13,17 @@ import { APPLE_CALM_THEME, useFireMonitor } from '../_layout';
 import { PROF_RENNE_INSTAGRAM_URL } from '../components/IosWeatherWidgets';
 
 export default function SobreTransparenciaScreen() {
-  const { metadata, spots, skeletonLogs, filterLogs, refreshNow } =
-    useFireMonitor();
+  const {
+    metadata,
+    spots,
+    skeletonLogs,
+    filterLogs,
+    refreshNow,
+    reduceMotion,
+    toggleReduceMotion,
+  } = useFireMonitor();
   const [exportFeedback, setExportFeedback] = useState<string | null>(null);
+  const [showTelemetryLogs, setShowTelemetryLogs] = useState<boolean>(false);
 
   const handleExportScientificCSV = useCallback(() => {
     const header =
@@ -88,6 +96,63 @@ export default function SobreTransparenciaScreen() {
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
+      {/* CARTÃO 0: PREFERÊNCIAS DE CONFORTO VISUAL E ACESSIBILIDADE (TDAH & TEA) */}
+      <View style={styles.card}>
+        <Text style={styles.eyebrow}>
+          CONFORTO VISUAL & ACESSIBILIDADE • TDAH E TEA NÍVEL 1
+        </Text>
+        <Text style={styles.cardTitle}>
+          Preferências de Movimento e Leitura Calma
+        </Text>
+        <Text style={styles.paragraph}>
+          Este aplicativo foi projetado com estrutura previsível (Título →
+          Resumo → Detalhes), alto contraste escuro e zero animações em loop.
+          Você pode desativar todas as transições visuais abaixo a qualquer
+          momento.
+        </Text>
+
+        <Pressable
+          onPress={toggleReduceMotion}
+          style={({ pressed }) => [
+            styles.accessibilityToggleRow,
+            reduceMotion && styles.accessibilityToggleRowActive,
+            pressed && styles.btnPressed,
+          ]}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: reduceMotion }}
+          accessibilityLabel="Interruptor Reduzir animações do aplicativo"
+        >
+          <View style={styles.accessibilityToggleInfo}>
+            <View style={styles.accessibilityTitleInline}>
+              <Ionicons
+                name={reduceMotion ? 'eye-outline' : 'sparkles-outline'}
+                size={18}
+                color={reduceMotion ? '#30D158' : '#64D2FF'}
+              />
+              <Text style={styles.accessibilityToggleTitle}>
+                Reduzir animações (Modo Estático Calmo)
+              </Text>
+            </View>
+            <Text style={styles.accessibilityToggleSub}>
+              {reduceMotion
+                ? 'Ativado: o mapa e os cartões mudam instantaneamente (0 ms).'
+                : 'Desativado: transições curtas e suaves entre 150 ms e 300 ms.'}
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.switchPill,
+              reduceMotion ? styles.switchPillOn : styles.switchPillOff,
+            ]}
+          >
+            <Text style={styles.switchPillText}>
+              {reduceMotion ? 'ATIVADO' : 'DESATIVADO'}
+            </Text>
+          </View>
+        </Pressable>
+      </View>
+
       {/* CARTÃO 1: SOBRE O APP & TRANSPARÊNCIA DAS FONTES ORBITAIS (CENSIPAM & INPE) */}
       <View style={styles.card}>
         <Text style={styles.eyebrow}>
@@ -233,38 +298,69 @@ export default function SobreTransparenciaScreen() {
           </View>
         </View>
 
-        <Text style={styles.subSectionTitle}>
-          Histórico Recente de Consultas por Cidade (Meta: localizar em até 3 toques)
-        </Text>
-        <View style={styles.logList}>
-          {filterLogs.slice(0, 5).map((log) => (
-            <View key={log.id} style={styles.logRow}>
-              <Text style={styles.logPrimaryText}>
-                {log.targetMunicipality} ({log.targetUF})
-              </Text>
-              <Text style={styles.logMonoText}>
-                {log.clicksUsed} {log.clicksUsed === 1 ? 'toque' : 'toques'} •{' '}
-                {(log.durationMs / 1000).toFixed(2)}s •{' '}
-                {log.withinTargetGoal ? 'RÁPIDO (≤ 3)' : 'ACIMA DE 3'}
-              </Text>
-            </View>
-          ))}
-        </View>
+        <Pressable
+          onPress={() => setShowTelemetryLogs((prev) => !prev)}
+          style={({ pressed }) => [
+            styles.progressiveLogsBtn,
+            pressed && styles.btnPressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={
+            showTelemetryLogs
+              ? 'Ocultar histórico técnico de consultas e tempo de resposta'
+              : 'Ver histórico técnico de consultas e tempo de resposta'
+          }
+        >
+          <Ionicons
+            name={
+              showTelemetryLogs ? 'chevron-up-outline' : 'chevron-down-outline'
+            }
+            size={16}
+            color="#64D2FF"
+          />
+          <Text style={styles.progressiveLogsBtnText}>
+            {showTelemetryLogs
+              ? 'Ocultar histórico técnico de consultas e resposta'
+              : 'Ver histórico técnico de consultas e tempo de resposta'}
+          </Text>
+        </Pressable>
 
-        <Text style={styles.subSectionTitle}>
-          Tempo de Resposta por Tela (Preparação Visual vs. Sincronização Total)
-        </Text>
-        <View style={styles.logList}>
-          {skeletonLogs.slice(0, 4).map((sLog) => (
-            <View key={sLog.id} style={styles.logRow}>
-              <Text style={styles.logPrimaryText}>Tela: {sLog.screen}</Text>
-              <Text style={styles.logMonoText}>
-                Preparação: {sLog.skeletonLeadTimeMs}ms • Sincronização:{' '}
-                {sLog.dataHydrationTimeMs}ms • Sem saltos
-              </Text>
+        {showTelemetryLogs ? (
+          <View>
+            <Text style={styles.subSectionTitle}>
+              Histórico Recente de Consultas por Cidade (Meta: localizar em até 3 toques)
+            </Text>
+            <View style={styles.logList}>
+              {filterLogs.slice(0, 5).map((log) => (
+                <View key={log.id} style={styles.logRow}>
+                  <Text style={styles.logPrimaryText}>
+                    {log.targetMunicipality} ({log.targetUF})
+                  </Text>
+                  <Text style={styles.logMonoText}>
+                    {log.clicksUsed} {log.clicksUsed === 1 ? 'toque' : 'toques'} •{' '}
+                    {(log.durationMs / 1000).toFixed(2)}s •{' '}
+                    {log.withinTargetGoal ? 'RÁPIDO (≤ 3)' : 'ACIMA DE 3'}
+                  </Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
+
+            <Text style={styles.subSectionTitle}>
+              Tempo de Resposta por Tela (Preparação Visual vs. Sincronização Total)
+            </Text>
+            <View style={styles.logList}>
+              {skeletonLogs.slice(0, 4).map((sLog) => (
+                <View key={sLog.id} style={styles.logRow}>
+                  <Text style={styles.logPrimaryText}>Tela: {sLog.screen}</Text>
+                  <Text style={styles.logMonoText}>
+                    Preparação: {sLog.skeletonLeadTimeMs}ms • Sincronização:{' '}
+                    {sLog.dataHydrationTimeMs}ms • Sem saltos
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
       </View>
 
       {/* CARTÃO 3: DIRETRIZES APPLE HIG & APRESENTAÇÃO SNCT / BANNER */}
@@ -483,8 +579,8 @@ const styles = StyleSheet.create({
     color: '#FFD60A',
   },
   secondaryBtn: {
-    minHeight: 40,
-    paddingHorizontal: 13,
+    minHeight: 44,
+    paddingHorizontal: 14,
     borderRadius: 12,
     backgroundColor: 'rgba(10, 132, 255, 0.2)',
     borderWidth: 1,
@@ -505,8 +601,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   exportCsvBtn: {
-    minHeight: 40,
-    paddingHorizontal: 13,
+    minHeight: 44,
+    paddingHorizontal: 14,
     borderRadius: 12,
     backgroundColor: 'rgba(48, 209, 88, 0.16)',
     borderWidth: 1,
@@ -514,6 +610,85 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  accessibilityToggleRow: {
+    minHeight: 56,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(9, 14, 28, 0.62)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 210, 255, 0.28)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  accessibilityToggleRowActive: {
+    backgroundColor: 'rgba(48, 209, 88, 0.14)',
+    borderColor: 'rgba(48, 209, 88, 0.45)',
+  },
+  accessibilityToggleInfo: {
+    flex: 1,
+    minWidth: 200,
+    gap: 4,
+  },
+  accessibilityTitleInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  accessibilityToggleTitle: {
+    fontFamily: APPLE_CALM_THEME.fonts.heading,
+    fontSize: 15,
+    fontWeight: '700',
+    color: APPLE_CALM_THEME.colors.textPrimary,
+  },
+  accessibilityToggleSub: {
+    fontFamily: APPLE_CALM_THEME.fonts.body,
+    fontSize: 12.5,
+    color: APPLE_CALM_THEME.colors.textSecondary,
+  },
+  switchPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  switchPillOn: {
+    backgroundColor: 'rgba(48, 209, 88, 0.22)',
+    borderColor: '#30D158',
+  },
+  switchPillOff: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  switchPillText: {
+    fontFamily: APPLE_CALM_THEME.fonts.mono,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#F8FAFC',
+  },
+  progressiveLogsBtn: {
+    minHeight: 44,
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 210, 255, 0.25)',
+    backgroundColor: 'rgba(10, 132, 255, 0.10)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  progressiveLogsBtnText: {
+    fontFamily: APPLE_CALM_THEME.fonts.body,
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#64D2FF',
   },
   exportCsvBtnText: {
     fontFamily: APPLE_CALM_THEME.fonts.body,
@@ -682,6 +857,7 @@ const styles = StyleSheet.create({
     color: '#64D2FF',
   },
   btnPressed: {
-    opacity: 0.75,
+    opacity: 0.85,
+    transform: [{ scale: 0.98 }],
   },
 });

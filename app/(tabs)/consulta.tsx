@@ -21,6 +21,10 @@ import {
   normalizeSearchText,
 } from '../services/fireDataService';
 import { InstitutionalCreditsCard } from '../components/IosWeatherWidgets';
+import {
+  estimateRegionalClimate,
+  getRiskMetaFromSeverity,
+} from '../theme/tokens';
 
 export default function ConsultaSeletivaScreen() {
   const router = useRouter();
@@ -39,6 +43,7 @@ export default function ConsultaSeletivaScreen() {
   // Padrão inicial em PI (Piauí — sede do IFPI Campus Floriano) quando UF está em TODOS
   const activeUF: NordesteUF = selectedUF === 'TODOS' ? 'PI' : selectedUF;
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [showAllCities, setShowAllCities] = useState<boolean>(false);
   const [ibgeList, setIbgeList] = useState<IBGEMunicipality[]>([]);
   const [isLoadingIBGE, setIsLoadingIBGE] = useState<boolean>(false);
   const [ibgeLiveSource, setIbgeLiveSource] = useState<boolean>(true);
@@ -86,6 +91,8 @@ export default function ConsultaSeletivaScreen() {
       return normalizeSearchText(m.nome).includes(q);
     });
 
+    const limit = q.length > 0 || showAllCities ? 18 : 8;
+
     return matches
       .sort((a, b) => {
         const countA =
@@ -95,8 +102,8 @@ export default function ConsultaSeletivaScreen() {
         if (countB !== countA) return countB - countA;
         return a.nome.localeCompare(b.nome, 'pt-BR');
       })
-      .slice(0, 18);
-  }, [ibgeList, searchQuery, spotCountByMuni]);
+      .slice(0, limit);
+  }, [ibgeList, searchQuery, showAllCities, spotCountByMuni]);
 
   const localMunicipalitySpots = useMemo(() => {
     if (!selectedMunicipality) return [];
@@ -156,7 +163,9 @@ export default function ConsultaSeletivaScreen() {
         <View style={styles.ufSegmentedGrid}>
           {NORDESTE_STATES.map((st) => {
             const isSelected = activeUF === st.uf;
-            const ufSpotsCount = spots.filter((s) => s.uf === st.uf).length;
+            const ufSpots = spots.filter((s) => s.uf === st.uf);
+            const ufSpotsCount = ufSpots.length;
+            const ufClimate = estimateRegionalClimate(ufSpots, st.uf);
             return (
               <Pressable
                 key={st.uf}
@@ -168,16 +177,26 @@ export default function ConsultaSeletivaScreen() {
                 ]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isSelected }}
-                accessibilityLabel={`Estado ${st.name}, sigla ${st.uf}, ${ufSpotsCount} focos ativos`}
+                accessibilityLabel={`Estado ${st.name}, sigla ${st.uf}, temperatura ${ufClimate.tempC} graus Celsius, ${ufSpotsCount} focos ativos, ${ufClimate.riskMeta.label}`}
               >
-                <Text
-                  style={[
-                    styles.ufSiglaText,
-                    isSelected && styles.ufTextActive,
-                  ]}
-                >
-                  {st.uf}
-                </Text>
+                <View style={styles.ufTopRow}>
+                  <Text
+                    style={[
+                      styles.ufSiglaText,
+                      isSelected && styles.ufTextActive,
+                    ]}
+                  >
+                    {st.uf}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.ufTempBadgeText,
+                      isSelected && styles.ufTextActive,
+                    ]}
+                  >
+                    {ufClimate.tempC}°C
+                  </Text>
+                </View>
                 <Text
                   style={[
                     styles.ufNameText,
@@ -193,13 +212,18 @@ export default function ConsultaSeletivaScreen() {
                     isSelected && styles.ufCountBadgeActive,
                   ]}
                 >
+                  <Ionicons
+                    name={ufClimate.riskMeta.icon}
+                    size={12}
+                    color={isSelected ? '#FFFFFF' : ufClimate.riskMeta.color}
+                  />
                   <Text
                     style={[
                       styles.ufCountText,
                       isSelected && styles.ufCountTextActive,
                     ]}
                   >
-                    {ufSpotsCount} focos
+                    {ufSpotsCount} focos • {ufClimate.riskMeta.shortLabel}
                   </Text>
                 </View>
               </Pressable>
@@ -282,6 +306,17 @@ export default function ConsultaSeletivaScreen() {
               const isSelected =
                 selectedMunicipality?.toLowerCase() === muni.nome.toLowerCase();
               const hasActiveFire = muniSpots.length > 0;
+              const maxSeverity = muniSpots.some((s) => s.severity === 'critico')
+                ? 'critico'
+                : muniSpots.some((s) => s.severity === 'alto')
+                  ? 'alto'
+                  : hasActiveFire
+                    ? 'moderado'
+                    : null;
+              const cityRiskMeta = getRiskMetaFromSeverity(
+                maxSeverity,
+                muniSpots.length
+              );
 
               return (
                 <Pressable
@@ -294,7 +329,7 @@ export default function ConsultaSeletivaScreen() {
                   ]}
                   accessibilityRole="button"
                   accessibilityState={{ selected: isSelected }}
-                  accessibilityLabel={`Município ${muni.nome}, ${muniSpots.length} focos detectados`}
+                  accessibilityLabel={`Município ${muni.nome}, ${muniSpots.length} focos detectados, ${cityRiskMeta.label}`}
                 >
                   <View style={styles.cityInfoCol}>
                     <Text
@@ -321,32 +356,68 @@ export default function ConsultaSeletivaScreen() {
                   <View
                     style={[
                       styles.cityFireChip,
-                      hasActiveFire
-                        ? styles.cityFireChipAlert
-                        : styles.cityFireChipCalm,
-                      isSelected && styles.cityFireChipSelected,
+                      {
+                        backgroundColor: isSelected
+                          ? 'rgba(255, 255, 255, 0.24)'
+                          : cityRiskMeta.bgSoft,
+                        borderColor: isSelected
+                          ? 'rgba(255, 255, 255, 0.45)'
+                          : cityRiskMeta.borderColor,
+                      },
                     ]}
                   >
+                    <Ionicons
+                      name={cityRiskMeta.icon}
+                      size={13}
+                      color={isSelected ? '#FFFFFF' : cityRiskMeta.color}
+                    />
                     <Text
                       style={[
                         styles.cityFireChipText,
-                        hasActiveFire
-                          ? styles.cityFireChipTextAlert
-                          : styles.cityFireChipTextCalm,
-                        isSelected && styles.cityTextActive,
+                        { color: isSelected ? '#FFFFFF' : cityRiskMeta.color },
                       ]}
                     >
                       {hasActiveFire
-                        ? `${muniSpots.length} ${muniSpots.length === 1
-                          ? 'foco ativo'
-                          : 'focos ativos'
-                        }`
-                        : 'Sem focos'}
+                        ? `${cityRiskMeta.shortLabel} • ${muniSpots.length} ${
+                            muniSpots.length === 1 ? 'foco' : 'focos'
+                          }`
+                        : 'Baixo • Sem focos'}
                     </Text>
                   </View>
                 </Pressable>
               );
             })}
+
+            {searchQuery.trim().length === 0 && ibgeList.length > 8 ? (
+              <Pressable
+                onPress={() => setShowAllCities((prev) => !prev)}
+                style={({ pressed }) => [
+                  styles.moreCitiesBtn,
+                  pressed && styles.btnPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  showAllCities
+                    ? 'Mostrar lista resumida de municípios'
+                    : 'Mostrar mais municípios deste estado'
+                }
+              >
+                <Ionicons
+                  name={
+                    showAllCities
+                      ? 'chevron-up-outline'
+                      : 'chevron-down-outline'
+                  }
+                  size={16}
+                  color="#64D2FF"
+                />
+                <Text style={styles.moreCitiesBtnText}>
+                  {showAllCities
+                    ? 'Mostrar resumo (8 cidades principais)'
+                    : `Ver mais cidades de ${activeUF} (18 municípios)`}
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
         )}
       </View>
@@ -401,81 +472,109 @@ export default function ConsultaSeletivaScreen() {
         {selectedMunicipality ? (
           localMunicipalitySpots.length > 0 ? (
             <View style={styles.localSpotsList}>
-              {localMunicipalitySpots.map((spot) => (
-                <View key={spot.id} style={styles.localSpotItem}>
-                  <View style={styles.localSpotTop}>
-                    <Text style={styles.localSpotTitle}>
-                      Foco #{spot.id} • Satélite {spot.satellite}
-                    </Text>
+              {localMunicipalitySpots.map((spot) => {
+                const spotRisk = getRiskMetaFromSeverity(spot.severity, 1);
+                return (
+                  <View key={spot.id} style={styles.localSpotItem}>
+                    <View style={styles.localSpotTop}>
+                      <Text style={styles.localSpotTitle}>
+                        Foco #{spot.id} • Satélite {spot.satellite}
+                      </Text>
+                      <View
+                        style={[
+                          styles.localSpotRiskBadge,
+                          {
+                            backgroundColor: spotRisk.bgSoft,
+                            borderColor: spotRisk.borderColor,
+                          },
+                        ]}
+                      >
+                        <Ionicons
+                          name={spotRisk.icon}
+                          size={13}
+                          color={spotRisk.color}
+                        />
+                        <Text
+                          style={[
+                            styles.localSpotRiskText,
+                            { color: spotRisk.color },
+                          ]}
+                        >
+                          {spotRisk.label}
+                        </Text>
+                      </View>
+                    </View>
+
                     <Text style={styles.localSpotSource}>
+                      Fonte:{' '}
                       {spot.source === 'INPE_BDQUEIMADAS'
                         ? 'INPE BDQueimadas (10m)'
                         : 'CENSIPAM Painel do Fogo (30m)'}
                     </Text>
-                  </View>
 
-                  <Text style={styles.localSpotMeta}>
-                    Bioma: {spot.biome} • FRP: {spot.frpMW.toFixed(1)} MW •{' '}
-                    {spot.daysWithoutRain} dias sem chuva • Coord:{' '}
-                    <Text
-                      style={styles.coordInlineLink}
-                      onPress={() =>
-                        Linking.openURL(
-                          buildGoogleMapsSpotUrl(
-                            spot.latitude,
-                            spot.longitude,
-                            15
+                    <Text style={styles.localSpotMeta}>
+                      Bioma: {spot.biome} • FRP: {spot.frpMW.toFixed(1)} MW •{' '}
+                      {spot.daysWithoutRain} dias sem chuva • Coord:{' '}
+                      <Text
+                        style={styles.coordInlineLink}
+                        onPress={() =>
+                          Linking.openURL(
+                            buildGoogleMapsSpotUrl(
+                              spot.latitude,
+                              spot.longitude,
+                              15
+                            )
                           )
-                        )
-                      }
-                    >
-                      {spot.latitude.toFixed(4)}°, {spot.longitude.toFixed(4)}° (Google Maps ↗)
+                        }
+                      >
+                        {spot.latitude.toFixed(4)}°, {spot.longitude.toFixed(4)}° (Google Maps ↗)
+                      </Text>
                     </Text>
-                  </Text>
 
-                  <View style={styles.spotActionsRow}>
-                    <Pressable
-                      onPress={() => handleViewSpotOnMap(spot)}
-                      style={({ pressed }) => [
-                        styles.spotZoomLink,
-                        pressed && styles.btnPressed,
-                      ]}
-                      accessibilityRole="button"
-                    >
-                      <Text style={styles.spotZoomLinkText}>
-                        Centralizar no Radar do App →
-                      </Text>
-                    </Pressable>
+                    <View style={styles.spotActionsRow}>
+                      <Pressable
+                        onPress={() => handleViewSpotOnMap(spot)}
+                        style={({ pressed }) => [
+                          styles.spotZoomLink,
+                          pressed && styles.btnPressed,
+                        ]}
+                        accessibilityRole="button"
+                      >
+                        <Text style={styles.spotZoomLinkText}>
+                          Centralizar no Radar do App →
+                        </Text>
+                      </Pressable>
 
-                    <Pressable
-                      onPress={() =>
-                        Linking.openURL(
-                          buildGoogleMapsSpotUrl(
-                            spot.latitude,
-                            spot.longitude,
-                            15
+                      <Pressable
+                        onPress={() =>
+                          Linking.openURL(
+                            buildGoogleMapsSpotUrl(
+                              spot.latitude,
+                              spot.longitude,
+                              15
+                            )
                           )
-                        )
-                      }
-                      style={({ pressed }) => [
-                        styles.googleMapsActionPill,
-                        pressed && styles.btnPressed,
-                      ]}
-                      accessibilityRole="link"
-                      accessibilityLabel={`Abrir foco ${spot.id} exatamente no Google Maps`}
-                    >
-                      <Ionicons
-                        name="location-outline"
-                        size={15}
-                        color="#30D158"
-                      />
-                      <Text style={styles.googleMapsActionText}>
-                        Ver Foco no Google Maps (Satélite) ↗
-                      </Text>
-                    </Pressable>
+                        }
+                        style={({ pressed }) => [
+                          styles.googleMapsActionPill,
+                          pressed && styles.btnPressed,
+                        ]}
+                        accessibilityRole="link"
+                        accessibilityLabel={`Abrir foco ${spot.id} exatamente no Google Maps`}
+                      >
+                        <Ionicons
+                          name="location-outline"
+                          size={15}
+                          color="#30D158"
+                        />
+                        <Text style={styles.googleMapsActionText}>
+                          Ver Foco no Google Maps (Satélite) ↗
+                        </Text>
+                      </Pressable>
+                    </View>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           ) : (
             <Text style={styles.calmEmptyReport}>
@@ -577,11 +676,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#0A84FF',
     borderColor: '#64D2FF',
   },
+  ufTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
   ufSiglaText: {
     fontFamily: APPLE_CALM_THEME.fonts.heading,
     fontSize: 18,
     fontWeight: '700',
     color: APPLE_CALM_THEME.colors.textPrimary,
+  },
+  ufTempBadgeText: {
+    fontFamily: APPLE_CALM_THEME.fonts.heading,
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#64D2FF',
   },
   ufNameText: {
     fontFamily: APPLE_CALM_THEME.fonts.body,
@@ -593,10 +704,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   ufCountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     alignSelf: 'flex-start',
     backgroundColor: 'rgba(255, 255, 255, 0.10)',
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 999,
     marginTop: 4,
   },
@@ -701,31 +815,38 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.85)',
   },
   cityFireChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
     paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 999,
-  },
-  cityFireChipAlert: {
-    backgroundColor: 'rgba(255, 69, 58, 0.20)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 69, 58, 0.4)',
-  },
-  cityFireChipCalm: {
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
-  },
-  cityFireChipSelected: {
-    backgroundColor: 'rgba(255, 255, 255, 0.24)',
   },
   cityFireChipText: {
     fontFamily: APPLE_CALM_THEME.fonts.mono,
     fontSize: 11,
     fontWeight: '700',
   },
-  cityFireChipTextAlert: {
-    color: '#FF9F0A',
+  moreCitiesBtn: {
+    minHeight: 44,
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 210, 255, 0.25)',
+    backgroundColor: 'rgba(10, 132, 255, 0.10)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
-  cityFireChipTextCalm: {
-    color: APPLE_CALM_THEME.colors.textSecondary,
+  moreCitiesBtnText: {
+    fontFamily: APPLE_CALM_THEME.fonts.body,
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#64D2FF',
   },
   reportHeaderRow: {
     flexDirection: 'row',
@@ -785,14 +906,29 @@ const styles = StyleSheet.create({
   localSpotTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 8,
   },
   localSpotTitle: {
     fontFamily: APPLE_CALM_THEME.fonts.heading,
     fontSize: 14.5,
     fontWeight: '700',
     color: APPLE_CALM_THEME.colors.textPrimary,
+  },
+  localSpotRiskBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  localSpotRiskText: {
+    fontFamily: APPLE_CALM_THEME.fonts.heading,
+    fontSize: 11.5,
+    fontWeight: '700',
   },
   localSpotSource: {
     fontFamily: APPLE_CALM_THEME.fonts.mono,
@@ -807,7 +943,13 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   spotZoomLink: {
-    minHeight: 36,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 214, 10, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 214, 10, 0.3)',
     justifyContent: 'center',
   },
   spotZoomLinkText: {
@@ -827,22 +969,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
-    marginTop: 4,
+    marginTop: 6,
   },
   googleMapsActionPill: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
     backgroundColor: 'rgba(48, 209, 88, 0.16)',
     borderWidth: 1,
     borderColor: 'rgba(48, 209, 88, 0.38)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 999,
   },
   googleMapsActionText: {
     fontFamily: APPLE_CALM_THEME.fonts.body,
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '700',
     color: '#30D158',
   },
@@ -853,6 +996,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   btnPressed: {
-    opacity: 0.76,
+    opacity: 0.85,
+    transform: [{ scale: 0.98 }],
   },
 });

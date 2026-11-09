@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Image,
   Linking,
@@ -27,6 +27,10 @@ import {
   NORDESTE_STATES,
   NordesteUF,
 } from '../services/fireDataService';
+import {
+  estimateRegionalClimate,
+  getRiskMetaFromScore,
+} from '../theme/tokens';
 
 /**
  * Paleta e Tokens — Estilo iOS 18 "Tempo" (Weather) Dark Glass
@@ -540,8 +544,8 @@ export function FrpOrbitalAreaChart({ spots }: FrpOrbitalCurveProps) {
             </LinearGradient>
           </Defs>
 
-          {/* Linhas guias horizontais sutis */}
-          {[0.2, 0.55, 0.9].map((ratio, idx) => {
+          {/* Linhas guias horizontais sutis (apenas 2 linhas para evitar ruído visual) */}
+          {[0.25, 0.75].map((ratio, idx) => {
             const y = padTop + plotH * ratio;
             return (
               <Line
@@ -648,7 +652,8 @@ export function StateThermalRangeBars({
   onSelectUF,
 }: StateThermalRangeBarsProps) {
   const { width: winWidth } = useWindowDimensions();
-  const isCompactMobile = winWidth < 520;
+  const isCompactMobile = winWidth < 560;
+  const [showAllStates, setShowAllStates] = useState(false);
 
   const stateRows = useMemo(() => {
     const globalMaxFrp = Math.max(90, ...allSpots.map((s) => s.frpMW));
@@ -664,14 +669,14 @@ export function StateThermalRangeBars({
         ufSpots.length > 0
           ? Math.max(...ufSpots.map((s) => s.frpMW))
           : 28;
-      const avgRisk =
+      const avgRiskRatio =
         ufSpots.length > 0
-          ? Math.round(
-            (ufSpots.reduce((acc, s) => acc + s.fireRiskIndex, 0) /
-              ufSpots.length) *
-            100
-          )
-          : 50;
+          ? ufSpots.reduce((acc, s) => acc + s.fireRiskIndex, 0) /
+            ufSpots.length
+          : 0.45;
+      const avgRisk = Math.round(avgRiskRatio * 100);
+      const climate = estimateRegionalClimate(ufSpots, st.uf);
+      const riskMeta = climate.riskMeta;
 
       const startPct = Math.max(
         4,
@@ -694,12 +699,27 @@ export function StateThermalRangeBars({
         count: ufSpots.length,
         minFrp: Math.round(minFrp),
         maxFrp: Math.round(maxFrp),
+        tempC: climate.tempC,
         avgRisk,
+        riskMeta,
         startPct,
         widthPct: Math.max(14, endPct - startPct),
       };
     }).sort((a, b) => b.maxFrp - a.maxFrp);
   }, [allSpots]);
+
+  const visibleRows = useMemo(() => {
+    if (showAllStates) return stateRows;
+    const topFive = stateRows.slice(0, 5);
+    if (
+      selectedUF !== 'TODOS' &&
+      !topFive.some((r) => r.uf === selectedUF)
+    ) {
+      const selectedRow = stateRows.find((r) => r.uf === selectedUF);
+      if (selectedRow) return [...topFive, selectedRow];
+    }
+    return topFive;
+  }, [stateRows, showAllStates, selectedUF]);
 
   return (
     <View style={styles.glassWidgetCard}>
@@ -707,14 +727,18 @@ export function StateThermalRangeBars({
         <View style={styles.widgetTitleInline}>
           <Ionicons name="thermometer-outline" size={16} color="#FF453A" />
           <Text style={styles.widgetEyebrow}>
-            AMPLITUDE TÉRMICA POR UF (9 ESTADOS • ESTILO PREVISÃO iOS)
+            TEMPERATURA, FOCOS E RISCO POR ESTADO (9 UFs DO NORDESTE)
           </Text>
         </View>
         {selectedUF !== 'TODOS' ? (
           <Pressable
             onPress={() => onSelectUF('TODOS')}
-            style={styles.resetInlineBtn}
+            style={({ pressed }) => [
+              styles.resetInlineBtn,
+              pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
+            ]}
             accessibilityRole="button"
+            accessibilityLabel="Voltar para visão de todos os estados do Nordeste"
           >
             <Text style={styles.resetInlineText}>Ver Todos (NE)</Text>
           </Pressable>
@@ -722,12 +746,12 @@ export function StateThermalRangeBars({
       </View>
 
       <Text style={styles.widgetSubdesc}>
-        Barras de amplitude radiativa (FRP Mín → Máx em MW) e contagem de focos.
-        Toque em um estado para isolar no radar.
+        Resumo por estado com temperatura estimada (°C), focos ativos e nível de
+        risco (cor + ícone + texto). Toque em um estado para filtrar o mapa.
       </Text>
 
       <View style={styles.forecastList}>
-        {stateRows.map((row) => {
+        {visibleRows.map((row) => {
           const isSelected = selectedUF === row.uf;
           return (
             <Pressable
@@ -738,16 +762,16 @@ export function StateThermalRangeBars({
               style={({ pressed }) => [
                 styles.forecastRow,
                 isSelected && styles.forecastRowSelected,
-                pressed && { opacity: 0.78 },
+                pressed && { opacity: 0.85, transform: [{ scale: 0.99 }] },
               ]}
               accessibilityRole="button"
-              accessibilityLabel={`Estado ${row.name}, ${row.count} focos, potência entre ${row.minFrp} e ${row.maxFrp} Megawatts`}
+              accessibilityLabel={`Estado ${row.name}, temperatura ${row.tempC} graus Celsius, ${row.count} focos, ${row.riskMeta.shortLabel}, potência entre ${row.minFrp} e ${row.maxFrp} Megawatts`}
             >
               {/* Coluna UF + Nome */}
               <View
                 style={[
                   styles.forecastStateCol,
-                  isCompactMobile && { width: 72 },
+                  isCompactMobile && { width: 68 },
                 ]}
               >
                 <Text style={styles.forecastUfCode}>{row.uf}</Text>
@@ -756,34 +780,20 @@ export function StateThermalRangeBars({
                 </Text>
               </View>
 
-              {/* Contagem + Ícone de severidade estilo Clima */}
+              {/* Temperatura estimada (°C) + Contagem de focos */}
               <View
                 style={[
                   styles.forecastIconCol,
-                  isCompactMobile && { width: 46 },
+                  isCompactMobile && { width: 76 },
                 ]}
               >
-                <Ionicons
-                  name={row.maxFrp >= 60 ? 'flame' : 'sunny'}
-                  size={15}
-                  color={row.maxFrp >= 60 ? '#FF453A' : '#FF9F0A'}
-                />
+                <Text style={styles.forecastTempText}>{row.tempC}°C</Text>
                 <Text style={styles.forecastSpotsCount}>
                   {isCompactMobile
-                    ? `${row.count}`
-                    : `${row.count} ${row.count === 1 ? 'foco' : 'focos'}`}
+                    ? `• ${row.count}`
+                    : `• ${row.count} ${row.count === 1 ? 'foco' : 'focos'}`}
                 </Text>
               </View>
-
-              {/* Valor Mínimo FRP */}
-              <Text
-                style={[
-                  styles.forecastMinText,
-                  isCompactMobile && { width: 38, fontSize: 10 },
-                ]}
-              >
-                {row.minFrp} MW
-              </Text>
 
               {/* Barra Cápsula com Gradiente Térmico estilo iOS Weather */}
               <View style={styles.forecastBarTrack}>
@@ -813,14 +823,65 @@ export function StateThermalRangeBars({
                     fill={`url(#grad-${row.uf})`}
                   />
                 </Svg>
+                <Text style={styles.forecastFrpRangeNote}>
+                  {row.minFrp}–{row.maxFrp} MW
+                </Text>
               </View>
 
-              {/* Valor Máximo FRP */}
-              <Text style={styles.forecastMaxText}>{row.maxFrp} MW</Text>
+              {/* Selo Acessível de Risco: Cor + Ícone + Texto */}
+              <View
+                style={[
+                  styles.forecastRiskPill,
+                  {
+                    backgroundColor: row.riskMeta.bgSoft,
+                    borderColor: row.riskMeta.borderColor,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={row.riskMeta.icon as any}
+                  size={13}
+                  color={row.riskMeta.color}
+                />
+                <Text
+                  style={[
+                    styles.forecastRiskText,
+                    { color: row.riskMeta.color },
+                  ]}
+                >
+                  {row.riskMeta.label}
+                </Text>
+              </View>
             </Pressable>
           );
         })}
       </View>
+
+      {/* Botão de Divulgação Progressiva (>= 44px) */}
+      <Pressable
+        onPress={() => setShowAllStates((prev) => !prev)}
+        style={({ pressed }) => [
+          styles.progressiveStatesBtn,
+          pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={
+          showAllStates
+            ? 'Mostrar resumo com os 5 estados mais críticos'
+            : 'Ver todos os 9 estados do Nordeste'
+        }
+      >
+        <Ionicons
+          name={showAllStates ? 'chevron-up-outline' : 'chevron-down-outline'}
+          size={16}
+          color="#64D2FF"
+        />
+        <Text style={styles.progressiveStatesBtnText}>
+          {showAllStates
+            ? 'Mostrar resumo (5 estados mais críticos)'
+            : `Ver todos os 9 estados do Nordeste (+${stateRows.length - visibleRows.length})`}
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -882,6 +943,7 @@ export function BentoEnvironmentalWidgets({
     1,
     stats.cerradoCount + stats.caatingaCount + stats.mataCount
   );
+  const riskMeta = getRiskMetaFromScore(stats.avgRiskPct);
 
   return (
     <View style={styles.bentoGrid}>
@@ -898,25 +960,25 @@ export function BentoEnvironmentalWidgets({
             style={[
               styles.riskCategoryChip,
               {
-                backgroundColor:
-                  stats.avgRiskPct >= 85
-                    ? IOS_WEATHER_GLASS.colors.iosCoralSoft
-                    : IOS_WEATHER_GLASS.colors.iosOrangeSoft,
+                backgroundColor: riskMeta.bgSoft,
+                borderColor: riskMeta.borderColor,
               },
             ]}
           >
+            <Ionicons
+              name={riskMeta.icon as any}
+              size={14}
+              color={riskMeta.color}
+            />
             <Text
               style={[
                 styles.riskCategoryText,
                 {
-                  color:
-                    stats.avgRiskPct >= 85
-                      ? IOS_WEATHER_GLASS.colors.iosCoral
-                      : IOS_WEATHER_GLASS.colors.iosOrange,
+                  color: riskMeta.color,
                 },
               ]}
             >
-              {stats.avgRiskPct >= 85 ? 'Extremo' : 'Muito Alto'}
+              {riskMeta.shortLabel}
             </Text>
           </View>
         </View>
@@ -1335,31 +1397,34 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   resetInlineBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 999,
     backgroundColor: IOS_WEATHER_GLASS.colors.iosBlueSoft,
   },
   resetInlineText: {
     fontFamily: IOS_WEATHER_GLASS.fonts.body,
-    fontSize: 11.5,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
     color: IOS_WEATHER_GLASS.colors.iosCyan,
   },
   forecastList: {
-    gap: 6,
+    gap: 8,
   },
   forecastRow: {
-    minHeight: 46,
+    minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 14,
-    backgroundColor: 'rgba(9, 14, 28, 0.42)',
+    backgroundColor: 'rgba(9, 14, 28, 0.48)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   forecastRowSelected: {
     backgroundColor: 'rgba(10, 132, 255, 0.22)',
@@ -1380,15 +1445,21 @@ const styles = StyleSheet.create({
   },
   forecastUfName: {
     fontFamily: IOS_WEATHER_GLASS.fonts.body,
-    fontSize: 12.5,
+    fontSize: 13,
     color: IOS_WEATHER_GLASS.colors.textSecondary,
     flex: 1,
   },
   forecastIconCol: {
-    width: 78,
+    width: 104,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
+  },
+  forecastTempText: {
+    fontFamily: IOS_WEATHER_GLASS.fonts.display,
+    fontSize: 14,
+    fontWeight: '700',
+    color: IOS_WEATHER_GLASS.colors.textPrimary,
   },
   forecastSpotsCount: {
     fontFamily: IOS_WEATHER_GLASS.fonts.mono,
@@ -1396,24 +1467,51 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: IOS_WEATHER_GLASS.colors.iosCyan,
   },
-  forecastMinText: {
-    width: 46,
-    textAlign: 'right',
-    fontFamily: IOS_WEATHER_GLASS.fonts.mono,
-    fontSize: 11,
-    color: IOS_WEATHER_GLASS.colors.textMuted,
-  },
   forecastBarTrack: {
     flex: 1,
     minWidth: 70,
     justifyContent: 'center',
+    gap: 3,
   },
-  forecastMaxText: {
-    width: 50,
+  forecastFrpRangeNote: {
     fontFamily: IOS_WEATHER_GLASS.fonts.mono,
+    fontSize: 10,
+    color: IOS_WEATHER_GLASS.colors.textMuted,
+    textAlign: 'center',
+  },
+  forecastRiskPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  forecastRiskText: {
+    fontFamily: IOS_WEATHER_GLASS.fonts.display,
     fontSize: 11.5,
     fontWeight: '700',
-    color: IOS_WEATHER_GLASS.colors.textPrimary,
+  },
+  progressiveStatesBtn: {
+    minHeight: 44,
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 210, 255, 0.25)',
+    backgroundColor: 'rgba(10, 132, 255, 0.10)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  progressiveStatesBtnText: {
+    fontFamily: IOS_WEATHER_GLASS.fonts.body,
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: IOS_WEATHER_GLASS.colors.iosCyan,
   },
   bentoGrid: {
     flexDirection: 'row',
@@ -1440,6 +1538,10 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
   },
   riskCategoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 999,
