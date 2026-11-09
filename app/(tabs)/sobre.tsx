@@ -10,10 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { APPLE_CALM_THEME, useFireMonitor } from '../_layout';
-import {
-  InstitutionalCreditsCard,
-  PROF_RENNE_INSTAGRAM_URL,
-} from '../components/IosWeatherWidgets';
+import { PROF_RENNE_INSTAGRAM_URL } from '../components/IosWeatherWidgets';
 
 export default function SobreTransparenciaScreen() {
   const { metadata, spots, skeletonLogs, filterLogs, refreshNow } =
@@ -91,16 +88,13 @@ export default function SobreTransparenciaScreen() {
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
-      {/* CARTÃO DE DESTAQUE INSTITUCIONAL (IFPI CAMPUS FLORIANO • TURMA TDS-3 • PROF. RENNÊ SANTOS) */}
-      <InstitutionalCreditsCard />
-
-      {/* CARTÃO 1: TRANSPARÊNCIA DAS FONTES ORBITAIS (CENSIPAM & INPE) */}
+      {/* CARTÃO 1: SOBRE O APP & TRANSPARÊNCIA DAS FONTES ORBITAIS (CENSIPAM & INPE) */}
       <View style={styles.card}>
         <Text style={styles.eyebrow}>
-          TRANSPARÊNCIA DE DADOS • METADADOS DAS APIS OFICIAIS
+          SOBRE O APP • TRANSPARÊNCIA DE DADOS & APIS OFICIAIS
         </Text>
         <Text style={styles.cardTitle}>
-          Arquitetura de Monitoramento Orbital em Tempo Quase-Real
+          Radar Fogo — Monitoramento Orbital em Tempo Quase-Real
         </Text>
         <Text style={styles.paragraph}>
           Projetado pelo curso Técnico em Desenvolvimento de Sistemas (Turma

@@ -251,7 +251,7 @@ export default function MapaNordesteScreen() {
                 <Text style={styles.heroTopPillBrand}>RADAR FOGO</Text>
                 <Text style={styles.heroTopPillSep}>•</Text>
                 <Text style={styles.heroTopPillText}>
-                  IFPI FLORIANO (TDS-3)
+                  MONITORAMENTO ORBITAL
                 </Text>
               </View>
 

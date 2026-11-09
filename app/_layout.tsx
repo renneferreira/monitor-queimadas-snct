@@ -28,10 +28,7 @@ import {
   SyncMetadata,
   fetchSynchronizedFireData,
 } from './services/fireDataService';
-import {
-  AppLogoEmblem,
-  InstitutionalCreditsCard,
-} from './components/IosWeatherWidgets';
+import { AppLogoEmblem } from './components/IosWeatherWidgets';
 
 /**
  * Tokens de Design — Apple iOS 18 "Tempo" (Weather) Dark Glass & Orbital Telemetry
@@ -478,26 +475,24 @@ export default function RootLayout() {
           backgroundColor={APPLE_CALM_THEME.colors.background}
         />
 
-        {/* BARRA SUPERIOR DARK GLASS: LOGO + TRANSPARÊNCIA CENSIPAM/INPE + CRÉDITOS IFPI */}
+        {/* BARRA SUPERIOR DARK GLASS CLEAN: LOGO + STATUS DE TELEMETRIA */}
         <View
           style={[
             styles.transparencyBanner,
             isMobile && { paddingHorizontal: 12, paddingVertical: 6 },
           ]}
           accessibilityRole="header"
-          accessibilityLabel="Cabeçalho do Monitor Orbital de Queimadas - IFPI Campus Floriano Turma TDS-3"
+          accessibilityLabel="Cabeçalho do Radar Fogo - Monitor Orbital de Queimadas"
         >
           <View style={styles.bannerTopRow}>
             <View style={styles.brandAndSourceRow}>
-              <AppLogoEmblem size={isMobile ? 42 : 46} />
+              <AppLogoEmblem size={isMobile ? 40 : 44} />
               <View style={styles.brandTextCol}>
                 <View style={styles.brandTitleInline}>
                   <Text style={styles.appBrandName}>Radar Fogo</Text>
                   <View style={styles.ifpiHeaderBadge}>
                     <Text style={styles.ifpiHeaderBadgeText}>
-                      {isMobile
-                        ? 'IFPI • TDS-3'
-                        : 'IFPI • Campus Floriano • TDS-3'}
+                      Monitor Orbital NE
                     </Text>
                   </View>
                 </View>
@@ -508,8 +503,8 @@ export default function RootLayout() {
                     numberOfLines={1}
                   >
                     {isMobile
-                      ? 'Telemetria ativa (10–30m) • Fontes na aba Sobre'
-                      : 'Telemetria ativa (10–30 min) • Fontes detalhadas no rodapé e aba Sobre'}
+                      ? 'Telemetria ativa (10–30m)'
+                      : 'Telemetria orbital ativa (10–30 min) • Nordeste'}
                   </Text>
                 </View>
               </View>
@@ -542,9 +537,6 @@ export default function RootLayout() {
             </Pressable>
           </View>
         </View>
-
-        {/* FAIXA COMPACTA DE AUTORIA INSTITUCIONAL (IFPI CAMPUS FLORIANO • TDS-3 • PROF. RENNÊ SANTOS) */}
-        <InstitutionalCreditsCard compact />
 
         <View style={styles.contentContainer}>
           <Stack

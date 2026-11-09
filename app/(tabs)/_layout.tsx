@@ -62,12 +62,14 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="sobre"
         options={{
-          title: 'IFPI • TDS-3 & Artigo',
+          title: 'Sobre o App',
           tabBarAccessibilityLabel:
-            'Aba Créditos IFPI Campus Floriano Turma TDS-3 e Validação Científica SNCT',
+            'Aba Sobre o App, Fontes de Dados e Créditos Institucionais',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? 'shield-checkmark' : 'shield-checkmark-outline'}
+              name={
+                focused ? 'information-circle' : 'information-circle-outline'
+              }
               size={22}
               color={color}
             />
