@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import {
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -27,6 +28,7 @@ import {
   MapClusterItem,
   NORDESTE_STATES,
   NordesteUF,
+  buildGoogleMapsSpotUrl,
   clusterFireSpots,
 } from '../services/fireDataService';
 import {
@@ -577,10 +579,29 @@ export default function MapaNordesteScreen() {
 
             {/* Barra de Legenda & Coordenadas no Rodapé do Radar */}
             <View style={styles.mapTelemetryBar}>
-              <Text style={styles.mapTelemetryText}>
-                Centro: {mapCamera.latitude.toFixed(2)}°,{' '}
-                {mapCamera.longitude.toFixed(2)}° • Toque em um cluster para aproximar
-              </Text>
+              <Pressable
+                onPress={() =>
+                  Linking.openURL(
+                    buildGoogleMapsSpotUrl(
+                      activeSpot ? activeSpot.latitude : mapCamera.latitude,
+                      activeSpot ? activeSpot.longitude : mapCamera.longitude,
+                      activeSpot ? 14 : 7
+                    )
+                  )
+                }
+                style={({ pressed }) => [
+                  styles.radarCoordLinkBtn,
+                  pressed && styles.btnPressed,
+                ]}
+                accessibilityRole="link"
+                accessibilityLabel="Abrir coordenadas atuais no Google Maps"
+              >
+                <Ionicons name="location-outline" size={14} color="#64D2FF" />
+                <Text style={styles.mapTelemetryText}>
+                  Centro: {mapCamera.latitude.toFixed(2)}°,{' '}
+                  {mapCamera.longitude.toFixed(2)}° (Abrir Google Maps ↗)
+                </Text>
+              </Pressable>
               <View style={styles.legendRow}>
                 <View style={styles.legendItem}>
                   <View
@@ -697,10 +718,35 @@ export default function MapaNordesteScreen() {
 
             <View style={styles.telemetryCell}>
               <Text style={styles.telemetryKey}>Coordenadas & Código IBGE</Text>
-              <Text style={styles.telemetryValueMono}>
-                {activeSpot.latitude.toFixed(4)}°,{' '}
-                {activeSpot.longitude.toFixed(4)}° • IBGE {activeSpot.ibgeCode}
-              </Text>
+              <Pressable
+                onPress={() =>
+                  Linking.openURL(
+                    buildGoogleMapsSpotUrl(
+                      activeSpot.latitude,
+                      activeSpot.longitude,
+                      15
+                    )
+                  )
+                }
+                style={({ pressed }) => [
+                  styles.googleMapsCoordLink,
+                  pressed && styles.btnPressed,
+                ]}
+                accessibilityRole="link"
+                accessibilityLabel={`Abrir foco de ${activeSpot.municipality} nas coordenadas ${activeSpot.latitude.toFixed(4)}, ${activeSpot.longitude.toFixed(4)} no Google Maps`}
+              >
+                <Text style={styles.telemetryValueMonoUnderline}>
+                  {activeSpot.latitude.toFixed(4)}°,{' '}
+                  {activeSpot.longitude.toFixed(4)}° • IBGE{' '}
+                  {activeSpot.ibgeCode}
+                </Text>
+                <View style={styles.gmapsBadge}>
+                  <Ionicons name="navigate-circle-outline" size={15} color="#30D158" />
+                  <Text style={styles.gmapsBadgeText}>
+                    Consultar Foco no Google Maps ↗
+                  </Text>
+                </View>
+              </Pressable>
             </View>
           </View>
         ) : (
@@ -1011,7 +1057,14 @@ const styles = StyleSheet.create({
   mapTelemetryText: {
     fontFamily: APPLE_CALM_THEME.fonts.mono,
     fontSize: 11,
-    color: APPLE_CALM_THEME.colors.textSecondary,
+    color: '#64D2FF',
+    textDecorationLine: 'underline',
+  },
+  radarCoordLinkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 2,
   },
   legendRow: {
     flexDirection: 'row',
@@ -1103,6 +1156,35 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#64D2FF',
+  },
+  googleMapsCoordLink: {
+    gap: 7,
+    marginTop: 2,
+  },
+  telemetryValueMonoUnderline: {
+    fontFamily: APPLE_CALM_THEME.fonts.mono,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64D2FF',
+    textDecorationLine: 'underline',
+  },
+  gmapsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 5,
+    backgroundColor: 'rgba(48, 209, 88, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(48, 209, 88, 0.38)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  gmapsBadgeText: {
+    fontFamily: APPLE_CALM_THEME.fonts.body,
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#30D158',
   },
   emptyStateText: {
     fontFamily: APPLE_CALM_THEME.fonts.body,

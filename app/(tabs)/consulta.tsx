@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,6 +16,7 @@ import {
   IBGEMunicipality,
   NORDESTE_STATES,
   NordesteUF,
+  buildGoogleMapsSpotUrl,
   fetchIBGEMunicipalitiesByUF,
   normalizeSearchText,
 } from '../services/fireDataService';
@@ -415,21 +417,63 @@ export default function ConsultaSeletivaScreen() {
                   <Text style={styles.localSpotMeta}>
                     Bioma: {spot.biome} • FRP: {spot.frpMW.toFixed(1)} MW •{' '}
                     {spot.daysWithoutRain} dias sem chuva • Coord:{' '}
-                    {spot.latitude.toFixed(4)}°, {spot.longitude.toFixed(4)}°
+                    <Text
+                      style={styles.coordInlineLink}
+                      onPress={() =>
+                        Linking.openURL(
+                          buildGoogleMapsSpotUrl(
+                            spot.latitude,
+                            spot.longitude,
+                            15
+                          )
+                        )
+                      }
+                    >
+                      {spot.latitude.toFixed(4)}°, {spot.longitude.toFixed(4)}° (Google Maps ↗)
+                    </Text>
                   </Text>
 
-                  <Pressable
-                    onPress={() => handleViewSpotOnMap(spot)}
-                    style={({ pressed }) => [
-                      styles.spotZoomLink,
-                      pressed && styles.btnPressed,
-                    ]}
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.spotZoomLinkText}>
-                      Centralizar exatamente neste foco no Radar →
-                    </Text>
-                  </Pressable>
+                  <View style={styles.spotActionsRow}>
+                    <Pressable
+                      onPress={() => handleViewSpotOnMap(spot)}
+                      style={({ pressed }) => [
+                        styles.spotZoomLink,
+                        pressed && styles.btnPressed,
+                      ]}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.spotZoomLinkText}>
+                        Centralizar no Radar do App →
+                      </Text>
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() =>
+                        Linking.openURL(
+                          buildGoogleMapsSpotUrl(
+                            spot.latitude,
+                            spot.longitude,
+                            15
+                          )
+                        )
+                      }
+                      style={({ pressed }) => [
+                        styles.googleMapsActionPill,
+                        pressed && styles.btnPressed,
+                      ]}
+                      accessibilityRole="link"
+                      accessibilityLabel={`Abrir foco ${spot.id} exatamente no Google Maps`}
+                    >
+                      <Ionicons
+                        name="location-outline"
+                        size={15}
+                        color="#30D158"
+                      />
+                      <Text style={styles.googleMapsActionText}>
+                        Ver Foco no Google Maps (Satélite) ↗
+                      </Text>
+                    </Pressable>
+                  </View>
                 </View>
               ))}
             </View>
@@ -765,13 +809,42 @@ const styles = StyleSheet.create({
   spotZoomLink: {
     minHeight: 36,
     justifyContent: 'center',
-    marginTop: 2,
   },
   spotZoomLinkText: {
     fontFamily: APPLE_CALM_THEME.fonts.body,
     fontSize: 13,
     fontWeight: '700',
     color: '#FFD60A',
+  },
+  coordInlineLink: {
+    color: '#64D2FF',
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  spotActionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginTop: 4,
+  },
+  googleMapsActionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(48, 209, 88, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(48, 209, 88, 0.38)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  googleMapsActionText: {
+    fontFamily: APPLE_CALM_THEME.fonts.body,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#30D158',
   },
   calmEmptyReport: {
     fontFamily: APPLE_CALM_THEME.fonts.body,

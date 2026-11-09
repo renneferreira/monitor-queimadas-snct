@@ -825,3 +825,17 @@ export function normalizeSearchText(text: string): string {
     .toLowerCase()
     .trim();
 }
+
+/**
+ * Gera URL direta para o Google Maps (modo Satélite Híbrido com pino exato na coordenada)
+ * para inspeção geográfica precisa do foco de queimada.
+ */
+export function buildGoogleMapsSpotUrl(
+  latitude: number,
+  longitude: number,
+  zoom = 14
+): string {
+  const lat = latitude.toFixed(4);
+  const lng = longitude.toFixed(4);
+  return `https://www.google.com/maps?q=${lat},${lng}&ll=${lat},${lng}&z=${zoom}&t=h`;
+}
