@@ -10,7 +10,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { APPLE_CALM_THEME, useFireMonitor } from '../_layout';
-import { InstitutionalCreditsCard } from '../components/IosWeatherWidgets';
+import {
+  InstitutionalCreditsCard,
+  PROF_RENNE_INSTAGRAM_URL,
+} from '../components/IosWeatherWidgets';
 
 export default function SobreTransparenciaScreen() {
   const { metadata, spots, skeletonLogs, filterLogs, refreshNow } =
@@ -101,8 +104,14 @@ export default function SobreTransparenciaScreen() {
         </Text>
         <Text style={styles.paragraph}>
           Projetado pelo curso Técnico em Desenvolvimento de Sistemas (Turma
-          TDS-3) do IFPI — Campus Floriano sob supervisão do Prof. Rennê Santos,
-          o aplicativo aplica a estética Dark Glass inspirada no app Tempo do
+          TDS-3) do IFPI — Campus Floriano sob supervisão do{' '}
+          <Text
+            style={styles.instaInlineLink}
+            onPress={() => Linking.openURL(PROF_RENNE_INSTAGRAM_URL)}
+          >
+            Prof. Rennê Santos (@oxe.renne)
+          </Text>
+          , o aplicativo aplica a estética Dark Glass inspirada no app Tempo do
           iOS combinada à previsibilidade temporal para TDAH e TEA Nível 1.
         </Text>
 
@@ -271,8 +280,14 @@ export default function SobreTransparenciaScreen() {
               <Text style={styles.boldText}>
                 Autoria IFPI — Campus Floriano:
               </Text>{' '}
-              Desenvolvido pela Turma TDS-3 sob supervisão do Prof. Rennê
-              Santos.
+              Desenvolvido pela Turma TDS-3 sob supervisão do{' '}
+              <Text
+                style={styles.instaInlineLink}
+                onPress={() => Linking.openURL(PROF_RENNE_INSTAGRAM_URL)}
+              >
+                Prof. Rennê Santos (@oxe.renne)
+              </Text>
+              .
             </Text>
           </View>
           <View style={styles.checkItem}>
@@ -298,6 +313,21 @@ export default function SobreTransparenciaScreen() {
         </View>
 
         <View style={styles.externalLinksRow}>
+          <Pressable
+            onPress={() => Linking.openURL(PROF_RENNE_INSTAGRAM_URL)}
+            style={({ pressed }) => [
+              styles.instaLinkButton,
+              pressed && styles.btnPressed,
+            ]}
+            accessibilityRole="link"
+            accessibilityLabel="Abrir Instagram do Professor Rennê Santos @oxe.renne"
+          >
+            <Ionicons name="logo-instagram" size={18} color="#FF375F" />
+            <Text style={styles.instaLinkButtonText}>
+              Supervisão: Prof. Rennê Santos (@oxe.renne) ↗
+            </Text>
+          </Pressable>
+
           <Pressable
             onPress={() => Linking.openURL('https://semanact.mcti.gov.br/')}
             style={({ pressed }) => [
@@ -603,6 +633,28 @@ const styles = StyleSheet.create({
   boldText: {
     fontWeight: '700',
     color: APPLE_CALM_THEME.colors.textPrimary,
+  },
+  instaInlineLink: {
+    fontWeight: '700',
+    color: '#FF6482',
+    textDecorationLine: 'underline',
+  },
+  instaLinkButton: {
+    minHeight: 46,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 55, 95, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 55, 95, 0.42)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  instaLinkButtonText: {
+    fontFamily: APPLE_CALM_THEME.fonts.body,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FF85A1',
   },
   externalLinksRow: {
     flexDirection: 'row',

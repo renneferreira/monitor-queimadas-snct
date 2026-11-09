@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import {
   Image,
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -204,22 +205,48 @@ interface InstitutionalCreditsCardProps {
   compact?: boolean;
 }
 
+export const PROF_RENNE_INSTAGRAM_URL = 'https://www.instagram.com/oxe.renne';
+
 export function InstitutionalCreditsCard({
   compact = false,
 }: InstitutionalCreditsCardProps) {
+  const handleOpenInstagram = () => {
+    Linking.openURL(PROF_RENNE_INSTAGRAM_URL);
+  };
+
   if (compact) {
     return (
       <View style={styles.compactCreditsBar}>
-        <View style={styles.ifpiMiniDots}>
-          <View style={[styles.ifpiDot, { backgroundColor: '#FF453A' }]} />
-          <View style={[styles.ifpiDot, { backgroundColor: '#30D158' }]} />
-          <View style={[styles.ifpiDot, { backgroundColor: '#30D158' }]} />
+        <View style={styles.compactLeftRow}>
+          <View style={styles.ifpiMiniDots}>
+            <View style={[styles.ifpiDot, { backgroundColor: '#FF453A' }]} />
+            <View style={[styles.ifpiDot, { backgroundColor: '#30D158' }]} />
+            <View style={[styles.ifpiDot, { backgroundColor: '#30D158' }]} />
+          </View>
+          <Text style={styles.compactCreditsText}>
+            Projeto <Text style={styles.creditsStrong}>IFPI - Campus Floriano</Text>{' '}
+            • Desenvolvido pela <Text style={styles.creditsCyan}>Turma TDS-3</Text>{' '}
+            • Supervisão:
+          </Text>
+          <Pressable
+            onPress={handleOpenInstagram}
+            style={({ pressed }) => [
+              styles.compactInstaButton,
+              pressed && { opacity: 0.78 },
+            ]}
+            accessibilityRole="link"
+            accessibilityLabel="Abrir Instagram do Professor Rennê Santos @oxe.renne"
+          >
+            <Ionicons name="logo-instagram" size={13} color="#FF375F" />
+            <Text style={styles.compactInstaText}>
+              Prof. Rennê Santos (@oxe.renne)
+            </Text>
+            <Ionicons name="open-outline" size={11} color="#FFD60A" />
+          </Pressable>
         </View>
-        <Text style={styles.compactCreditsText}>
-          Projeto <Text style={styles.creditsStrong}>IFPI - Campus Floriano</Text>{' '}
-          • Desenvolvido pela <Text style={styles.creditsCyan}>Turma TDS-3</Text>{' '}
-          • Supervisão:{' '}
-          <Text style={styles.creditsAmber}>Prof. Rennê Santos</Text>
+
+        <Text style={styles.compactSourcesNote}>
+          Fontes: CENSIPAM (30m) & INPE (10m) • IBGE
         </Text>
       </View>
     );
@@ -242,7 +269,7 @@ export function InstitutionalCreditsCard({
               Radar Fogo — Monitor Orbital de Queimadas
             </Text>
             <Text style={styles.institutionalSubtitle}>
-              Semana Nacional de Ciência e Tecnologia (SNCT / MCTI) • Região Nordeste
+              Semana Nacional de Ciência e Tecnologia (SNCT / MCTI) • Fontes: INPE (10m), CENSIPAM (30m) e IBGE
             </Text>
           </View>
         </View>
@@ -277,15 +304,30 @@ export function InstitutionalCreditsCard({
           </View>
         </View>
 
-        <View style={styles.creditBadgeBox}>
-          <View style={[styles.creditIconWrap, { backgroundColor: 'rgba(255, 159, 10, 0.18)' }]}>
-            <Ionicons name="ribbon-outline" size={18} color="#FF9F0A" />
+        <Pressable
+          onPress={handleOpenInstagram}
+          style={({ pressed }) => [
+            styles.creditBadgeBox,
+            styles.creditBadgeBoxClickable,
+            pressed && { opacity: 0.8 },
+          ]}
+          accessibilityRole="link"
+          accessibilityLabel="Supervisão do Professor Rennê Santos, clique para abrir o Instagram @oxe.renne"
+        >
+          <View style={[styles.creditIconWrap, { backgroundColor: 'rgba(255, 55, 95, 0.18)' }]}>
+            <Ionicons name="logo-instagram" size={19} color="#FF375F" />
           </View>
           <View style={styles.creditTextCol}>
             <Text style={styles.creditLabel}>SUPERVISÃO E ORIENTAÇÃO TÉCNICA</Text>
-            <Text style={styles.creditValue}>Prof. Rennê Santos</Text>
+            <View style={styles.profInstaRow}>
+              <Text style={styles.creditValue}>Prof. Rennê Santos</Text>
+              <View style={styles.instaHandlePill}>
+                <Ionicons name="logo-instagram" size={12} color="#FF375F" />
+                <Text style={styles.instaHandleText}>@oxe.renne ↗</Text>
+              </View>
+            </View>
           </View>
-        </View>
+        </Pressable>
       </View>
     </View>
   );
@@ -912,12 +954,43 @@ const styles = StyleSheet.create({
   compactCreditsBar: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
     gap: 8,
     paddingHorizontal: 14,
-    paddingVertical: 7,
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    paddingVertical: 5,
+    backgroundColor: 'rgba(12, 19, 36, 0.90)',
     borderBottomWidth: 1,
     borderBottomColor: IOS_WEATHER_GLASS.colors.glassBorder,
+  },
+  compactLeftRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    flexShrink: 1,
+  },
+  compactInstaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255, 55, 95, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 55, 95, 0.38)',
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  compactInstaText: {
+    fontFamily: IOS_WEATHER_GLASS.fonts.body,
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#FFD60A',
+  },
+  compactSourcesNote: {
+    fontFamily: IOS_WEATHER_GLASS.fonts.mono,
+    fontSize: 10,
+    color: IOS_WEATHER_GLASS.colors.textMuted,
   },
   ifpiMiniDots: {
     flexDirection: 'row',
@@ -1040,6 +1113,34 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: IOS_WEATHER_GLASS.colors.glassBorder,
+  },
+  creditBadgeBoxClickable: {
+    borderColor: 'rgba(255, 55, 95, 0.42)',
+    backgroundColor: 'rgba(28, 14, 34, 0.55)',
+  },
+  profInstaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 2,
+  },
+  instaHandlePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 55, 95, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 55, 95, 0.4)',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  instaHandleText: {
+    fontFamily: IOS_WEATHER_GLASS.fonts.mono,
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#FF85A1',
   },
   creditIconWrap: {
     width: 36,

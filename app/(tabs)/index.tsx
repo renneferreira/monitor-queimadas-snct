@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Linking,
   Pressable,
@@ -15,13 +15,14 @@ import Svg, {
   Line,
   LinearGradient,
   Path,
+  Polygon,
   RadialGradient,
   Rect,
   Stop,
   Text as SvgText,
 } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
-import { APPLE_CALM_THEME, useFireMonitor } from '../_layout';
+import { APPLE_CALM_THEME, MapCameraState, useFireMonitor } from '../_layout';
 import {
   FireSeverity,
   FireSpot,
@@ -31,67 +32,13 @@ import {
   buildGoogleMapsSpotUrl,
   clusterFireSpots,
 } from '../services/fireDataService';
+import { IBGE_OFFICIAL_UF_MESH } from '../services/ibgeNordesteGeoMesh';
 import {
   BentoEnvironmentalWidgets,
   FrpOrbitalAreaChart,
   InstitutionalCreditsCard,
   StateThermalRangeBars,
 } from '../components/IosWeatherWidgets';
-
-/**
- * Polígonos simplificados e georreferenciados dos 9 Estados do Nordeste
- * projetados sobre o Radar Orbital Dark Glass.
- */
-const UF_GEO_POLYGONS: Record<
-  NordesteUF,
-  { path: string; labelLat: number; labelLng: number }
-> = {
-  MA: {
-    path: 'M -47.4,-2.2 L -44.2,-1.8 L -41.9,-2.8 L -42.8,-5.5 L -43.2,-6.8 L -45.5,-9.5 L -46.9,-8.9 L -47.5,-5.2 Z',
-    labelLat: -5.2,
-    labelLng: -45.1,
-  },
-  PI: {
-    path: 'M -41.9,-2.8 L -41.3,-3.0 L -40.9,-5.5 L -40.5,-7.8 L -41.2,-9.2 L -44.2,-10.9 L -45.8,-10.2 L -45.5,-9.5 L -43.2,-6.8 L -42.8,-5.5 Z',
-    labelLat: -7.4,
-    labelLng: -42.6,
-  },
-  CE: {
-    path: 'M -41.3,-3.0 L -38.5,-3.2 L -37.2,-4.8 L -38.4,-6.9 L -39.2,-7.8 L -40.5,-7.8 L -40.9,-5.5 Z',
-    labelLat: -5.3,
-    labelLng: -39.4,
-  },
-  RN: {
-    path: 'M -37.2,-4.8 L -35.0,-5.1 L -35.0,-6.5 L -36.8,-6.9 L -38.4,-6.4 Z',
-    labelLat: -5.8,
-    labelLng: -36.5,
-  },
-  PB: {
-    path: 'M -38.4,-6.4 L -36.8,-6.9 L -34.8,-6.5 L -34.8,-7.6 L -37.2,-8.1 L -38.6,-7.5 Z',
-    labelLat: -7.2,
-    labelLng: -36.8,
-  },
-  PE: {
-    path: 'M -40.5,-7.8 L -39.2,-7.8 L -37.2,-8.1 L -34.8,-7.6 L -35.1,-8.9 L -37.5,-9.2 L -38.3,-9.5 L -40.8,-9.6 L -41.2,-9.2 Z',
-    labelLat: -8.5,
-    labelLng: -38.0,
-  },
-  AL: {
-    path: 'M -38.1,-9.1 L -35.1,-8.9 L -35.8,-10.4 L -37.9,-9.6 Z',
-    labelLat: -9.6,
-    labelLng: -36.5,
-  },
-  SE: {
-    path: 'M -37.9,-9.6 L -36.4,-10.2 L -37.3,-11.5 L -38.2,-10.8 Z',
-    labelLat: -10.6,
-    labelLng: -37.3,
-  },
-  BA: {
-    path: 'M -45.8,-10.2 L -44.2,-10.9 L -41.2,-9.2 L -40.8,-9.6 L -38.3,-9.5 L -38.2,-10.8 L -37.3,-11.5 L -38.9,-15.5 L -39.2,-17.9 L -40.8,-17.5 L -44.5,-14.8 L -46.4,-13.5 L -46.3,-11.2 Z',
-    labelLat: -12.8,
-    labelLng: -41.9,
-  },
-};
 
 function getSeverityColors(severity: FireSeverity) {
   switch (severity) {
@@ -116,6 +63,68 @@ function getSeverityColors(severity: FireSeverity) {
   }
 }
 
+/**
+ * Hook de interpolação fluida de câmera (60 FPS com Cubic Ease-Out)
+ * Garante transições suaves de zoom e deslocamento no mapa vetorial IBGE.
+ */
+function useSmoothMapCamera(target: MapCameraState, durationMs = 420): MapCameraState {
+  const [current, setCurrent] = useState<MapCameraState>(target);
+  const currentRef = useRef<MapCameraState>(target);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const startCamera = { ...currentRef.current };
+    const dLat = target.latitude - startCamera.latitude;
+    const dLng = target.longitude - startCamera.longitude;
+    const dZoom = target.zoom - startCamera.zoom;
+
+    if (
+      Math.abs(dLat) < 0.001 &&
+      Math.abs(dLng) < 0.001 &&
+      Math.abs(dZoom) < 0.005
+    ) {
+      setCurrent(target);
+      currentRef.current = target;
+      return;
+    }
+
+    const startTime = performance.now();
+
+    const step = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / durationMs);
+      // Cubic Ease-Out: 1 - (1 - t)^3
+      const eased = 1 - Math.pow(1 - progress, 3);
+
+      const nextState: MapCameraState = {
+        latitude: startCamera.latitude + dLat * eased,
+        longitude: startCamera.longitude + dLng * eased,
+        zoom: startCamera.zoom + dZoom * eased,
+      };
+
+      currentRef.current = nextState;
+      setCurrent(nextState);
+
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(step);
+      }
+    };
+
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+    }
+    rafRef.current = requestAnimationFrame(step);
+
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, [target.latitude, target.longitude, target.zoom, durationMs]);
+
+  return current;
+}
+
 export default function MapaNordesteScreen() {
   const router = useRouter();
   const {
@@ -134,29 +143,41 @@ export default function MapaNordesteScreen() {
     resetMapToNordeste,
   } = useFireMonitor();
 
+  // Câmera interpolada a 60 FPS para animações fluidas no radar
+  const smoothCamera = useSmoothMapCamera(mapCamera, 420);
+
+  // Estado local para destacar imediatamente o cluster/foco clicado com o nome da(s) cidade(s)
+  const [clickedClusterId, setClickedClusterId] = useState<string | null>(null);
+
   const clusters = useMemo(
     () => clusterFireSpots(filteredSpots, mapCamera.zoom),
     [filteredSpots, mapCamera.zoom]
   );
 
   const viewBoxString = useMemo(() => {
-    const baseSpanLng = 16.5 / mapCamera.zoom;
-    const baseSpanLat = 17.5 / mapCamera.zoom;
-    const minX = mapCamera.longitude - baseSpanLng / 2;
-    const minY = -mapCamera.latitude - baseSpanLat / 2;
+    const baseSpanLng = 15.8 / smoothCamera.zoom;
+    const baseSpanLat = 16.8 / smoothCamera.zoom;
+    const minX = smoothCamera.longitude - baseSpanLng / 2;
+    const minY = -smoothCamera.latitude - baseSpanLat / 2;
     return `${minX.toFixed(3)} ${minY.toFixed(3)} ${baseSpanLng.toFixed(3)} ${baseSpanLat.toFixed(3)}`;
-  }, [mapCamera]);
+  }, [smoothCamera]);
 
   const handleClusterOrSpotPress = (item: MapClusterItem) => {
-    if (item.isCluster && mapCamera.zoom < 3.0) {
+    setClickedClusterId(item.id);
+    selectSpotOnMap(item.spots[0]);
+
+    if (item.isCluster && mapCamera.zoom < 2.6) {
       setMapCamera({
         latitude: item.latitude,
         longitude: item.longitude,
-        zoom: Math.min(4.0, Number((mapCamera.zoom + 0.95).toFixed(2))),
+        zoom: Math.min(3.6, Number((mapCamera.zoom + 0.75).toFixed(2))),
       });
-      selectSpotOnMap(item.spots[0]);
     } else {
-      selectSpotOnMap(item.spots[0]);
+      setMapCamera({
+        latitude: item.latitude,
+        longitude: item.longitude,
+        zoom: Math.max(mapCamera.zoom, 2.2),
+      });
     }
   };
 
@@ -178,12 +199,8 @@ export default function MapaNordesteScreen() {
       filteredSpots.length > 0
         ? Math.min(...filteredSpots.map((s) => s.frpMW))
         : 0;
-    const maxDrought =
-      filteredSpots.length > 0
-        ? Math.max(...filteredSpots.map((s) => s.daysWithoutRain))
-        : 0;
 
-    return { inpe, censipam, maxFrp, minFrp, maxDrought };
+    return { inpe, censipam, maxFrp, minFrp };
   }, [filteredSpots]);
 
   const heroLocationTitle = selectedMunicipality
@@ -194,91 +211,113 @@ export default function MapaNordesteScreen() {
           NORDESTE_STATES.find((s) => s.uf === selectedUF)?.name ?? selectedUF
         } (${selectedUF})`;
 
+  // Ordena para que o cluster selecionado seja desenhado por último (sempre no topo do SVG)
+  const orderedClusters = useMemo(() => {
+    return [...clusters].sort((a, b) => {
+      const aSelected =
+        a.id === clickedClusterId ||
+        (activeSpot ? a.spots.some((s) => s.id === activeSpot.id) : false);
+      const bSelected =
+        b.id === clickedClusterId ||
+        (activeSpot ? b.spots.some((s) => s.id === activeSpot.id) : false);
+      if (aSelected && !bSelected) return 1;
+      if (!aSelected && bSelected) return -1;
+      return 0;
+    });
+  }, [clusters, clickedClusterId, activeSpot]);
+
   return (
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
-      {/* 1. HERO ATMOSFÉRICO ESTILO APP TEMPO DO iOS (DARK GLASS) */}
-      <View style={styles.weatherHeroContainer}>
-        <View style={styles.heroTopPill}>
-          <Ionicons name="radio-outline" size={14} color="#64D2FF" />
-          <Text style={styles.heroTopPillText}>
-             MONITORAMENTO ORBITAL • IFPI CAMPUS FLORIANO (TDS-3)
-          </Text>
-        </View>
-
-        <Text style={styles.heroLocationName}>{heroLocationTitle}</Text>
-
-        {isLoading ? (
-          <View style={styles.heroSkeletonNum} />
-        ) : (
-          <View style={styles.heroNumberRow}>
-            <Text style={styles.heroGiantNumber}>{filteredSpots.length}</Text>
-            <View style={styles.heroUnitCol}>
-              <Text style={styles.heroUnitTitle}>FOCOS ATIVOS</Text>
-              <Text style={styles.heroUnitSub}>
-                Pico: {weatherHeroSummary.maxFrp.toFixed(1)} MW
+      {/* 1. CARD DE MONITORAMENTO COMPACTO (ESTILO BARRA CLIMÁTICA iOS WEATHER) */}
+      <View style={styles.compactHeroCard}>
+        <View style={styles.compactHeroMainRow}>
+          {/* Coluna Esquerda: Região e Condição Orbital */}
+          <View style={styles.compactHeroLeft}>
+            <View style={styles.heroTopPill}>
+              <Ionicons name="radio-outline" size={12} color="#64D2FF" />
+              <Text style={styles.heroTopPillText}>
+                MONITORAMENTO ORBITAL • IFPI CAMPUS FLORIANO (TDS-3)
               </Text>
             </View>
-          </View>
-        )}
 
-        <Text style={styles.heroConditionText}>
-          {activeSpot
-            ? `Alerta ${
-                activeSpot.severity === 'critico' ? 'Crítico' : 'Elevado'
-              } no Bioma ${activeSpot.biome} • Satélite ${activeSpot.satellite}`
-            : 'Sem focos críticos no recorte selecionado'}
-        </Text>
+            <Text style={styles.heroLocationName}>{heroLocationTitle}</Text>
 
-        <Text style={styles.heroHighLowText}>
-          Mín: {weatherHeroSummary.minFrp.toFixed(0)} MW • Máx:{' '}
-          {weatherHeroSummary.maxFrp.toFixed(0)} MW • INPE (10m):{' '}
-          {weatherHeroSummary.inpe} • CENSIPAM (30m):{' '}
-          {weatherHeroSummary.censipam}
-        </Text>
-
-        {/* Ações Rápidas & Segmented Control dos 9 Estados */}
-        <View style={styles.heroActionsRow}>
-          <Pressable
-            onPress={() => router.push('/(tabs)/consulta')}
-            style={({ pressed }) => [
-              styles.searchCityGlassBtn,
-              pressed && styles.btnPressed,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Ir para busca por cidade em até 3 cliques"
-          >
-            <Ionicons name="search-outline" size={16} color="#64D2FF" />
-            <Text style={styles.searchCityGlassBtnText}>
-              Filtrar Cidade (≤ 3 cliques)
+            <Text style={styles.heroConditionText} numberOfLines={1}>
+              {activeSpot
+                ? `Alerta ${
+                    activeSpot.severity === 'critico' ? 'Crítico' : 'Elevado'
+                  } no Bioma ${activeSpot.biome} • Satélite ${activeSpot.satellite}`
+                : 'Sem focos críticos no recorte selecionado'}
             </Text>
-          </Pressable>
+          </View>
 
-          {selectedUF !== 'TODOS' || selectedMunicipality ? (
+          {/* Coluna Central: Contagem Compacta de Focos + Pico FRP */}
+          {isLoading ? (
+            <View style={styles.heroSkeletonNum} />
+          ) : (
+            <View style={styles.compactCountBox}>
+              <Text style={styles.heroCompactNumber}>{filteredSpots.length}</Text>
+              <View style={styles.heroUnitCol}>
+                <Text style={styles.heroUnitTitle}>FOCOS ATIVOS</Text>
+                <Text style={styles.heroUnitSub}>
+                  Pico: {weatherHeroSummary.maxFrp.toFixed(1)} MW (Mín{' '}
+                  {weatherHeroSummary.minFrp.toFixed(0)} MW)
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Coluna Direita: Botões Rápidos */}
+          <View style={styles.compactActionsCol}>
             <Pressable
-              onPress={resetMapToNordeste}
+              onPress={() => router.push('/(tabs)/consulta')}
               style={({ pressed }) => [
-                styles.resetFilterGlassBtn,
+                styles.searchCityGlassBtn,
                 pressed && styles.btnPressed,
               ]}
               accessibilityRole="button"
+              accessibilityLabel="Ir para busca por cidade em até 3 cliques"
             >
-              <Ionicons name="refresh-outline" size={16} color="#FFD60A" />
-              <Text style={styles.resetFilterGlassText}>Visão Geral NE</Text>
+              <Ionicons name="search-outline" size={15} color="#64D2FF" />
+              <Text style={styles.searchCityGlassBtnText}>
+                Filtrar Cidade (≤ 3 cliques)
+              </Text>
             </Pressable>
-          ) : null}
+
+            {selectedUF !== 'TODOS' || selectedMunicipality ? (
+              <Pressable
+                onPress={() => {
+                  setClickedClusterId(null);
+                  resetMapToNordeste();
+                }}
+                style={({ pressed }) => [
+                  styles.resetFilterGlassBtn,
+                  pressed && styles.btnPressed,
+                ]}
+                accessibilityRole="button"
+              >
+                <Ionicons name="refresh-outline" size={14} color="#FFD60A" />
+                <Text style={styles.resetFilterGlassText}>Visão Geral NE</Text>
+              </Pressable>
+            ) : null}
+          </View>
         </View>
 
+        {/* Segmented Control Compacto das 9 UFs */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.segmentedScroll}
         >
           <Pressable
-            onPress={() => selectUF('TODOS')}
+            onPress={() => {
+              setClickedClusterId(null);
+              selectUF('TODOS');
+            }}
             style={[
               styles.segmentPill,
               selectedUF === 'TODOS' && styles.segmentPillActive,
@@ -302,7 +341,10 @@ export default function MapaNordesteScreen() {
             return (
               <Pressable
                 key={st.uf}
-                onPress={() => selectUF(st.uf)}
+                onPress={() => {
+                  setClickedClusterId(null);
+                  selectUF(st.uf);
+                }}
                 style={[
                   styles.segmentPill,
                   isSelected && styles.segmentPillActive,
@@ -324,18 +366,18 @@ export default function MapaNordesteScreen() {
         </ScrollView>
       </View>
 
-      {/* 2. RADAR ORBITAL DARK GLASS (MAPA INTERATIVO DO NORDESTE COM GRADIENTES TÉRMICOS) */}
+      {/* 2. RADAR CARTOGRÁFICO OFICIAL IBGE (MALHA OFICIAL + CIDADES NOS FOCOS + ANIMAÇÃO FLUIDA) */}
       <View style={styles.mapGlassCard}>
         <View style={styles.mapCardHeader}>
           <View style={styles.mapHeaderLeft}>
             <Ionicons name="analytics-outline" size={15} color="#64D2FF" />
             <Text style={styles.sectionEyebrow}>
-              RADAR TERMAL SATELITAL • REGIÃO NORDESTE ({clusters.length}{' '}
-              AGRUPAMENTOS VISÍVEIS)
+              MALHA CARTOGRÁFICA OFICIAL IBGE • RADAR TERMAL ({clusters.length}{' '}
+              AGRUPAMENTOS)
             </Text>
           </View>
           <Text style={styles.mapZoomBadge}>
-            Zoom {mapCamera.zoom.toFixed(1)}x
+            Zoom {smoothCamera.zoom.toFixed(1)}x • Toque em um foco para ver a cidade
           </Text>
         </View>
 
@@ -346,7 +388,7 @@ export default function MapaNordesteScreen() {
           >
             <View style={styles.skeletonBadge} />
             <Text style={styles.skeletonStatusText}>
-              Sincronizando camada de radar orbital (Zero Layout Shift • CLS 0.000)...
+              Carregando malha territorial oficial do IBGE (CLS 0.000)...
             </Text>
             <View style={styles.skeletonMapGrid} />
           </View>
@@ -359,80 +401,109 @@ export default function MapaNordesteScreen() {
               preserveAspectRatio="xMidYMid meet"
             >
               <Defs>
+                {/* Gradiente Topográfico / Satelital dos Estados do Nordeste */}
+                <LinearGradient id="ibgeLandGrad" x1="0" y1="0" x2="1" y2="1">
+                  <Stop offset="0%" stopColor="#142642" />
+                  <Stop offset="55%" stopColor="#102039" />
+                  <Stop offset="100%" stopColor="#0C172B" />
+                </LinearGradient>
+                <LinearGradient id="ibgeFocusedLandGrad" x1="0" y1="0" x2="1" y2="1">
+                  <Stop offset="0%" stopColor="#1E3F73" />
+                  <Stop offset="100%" stopColor="#132A52" />
+                </LinearGradient>
                 <RadialGradient id="heatHaloCritico" cx="50%" cy="50%" r="50%">
-                  <Stop offset="0%" stopColor="#FF453A" stopOpacity="0.55" />
-                  <Stop offset="55%" stopColor="#FF9F0A" stopOpacity="0.22" />
+                  <Stop offset="0%" stopColor="#FF453A" stopOpacity="0.62" />
+                  <Stop offset="50%" stopColor="#FF9F0A" stopOpacity="0.26" />
                   <Stop offset="100%" stopColor="#FF453A" stopOpacity="0" />
                 </RadialGradient>
                 <RadialGradient id="heatHaloAlto" cx="50%" cy="50%" r="50%">
-                  <Stop offset="0%" stopColor="#FF9F0A" stopOpacity="0.48" />
+                  <Stop offset="0%" stopColor="#FF9F0A" stopOpacity="0.52" />
                   <Stop offset="100%" stopColor="#FFD60A" stopOpacity="0" />
                 </RadialGradient>
-                <LinearGradient id="stateFocusedGrad" x1="0" y1="0" x2="1" y2="1">
-                  <Stop offset="0%" stopColor="#17315E" />
-                  <Stop offset="100%" stopColor="#0E2144" />
-                </LinearGradient>
               </Defs>
 
-              {/* Grade de coordenadas estilo Radar Apple Weather */}
+              {/* Grade geográfica oficial SIRGAS 2000 / WGS84 */}
               {[-46, -43, -40, -37].map((lng) => (
                 <Line
                   key={`meridian-${lng}`}
                   x1={lng}
                   y1={1.0}
                   x2={lng}
-                  y2={18.5}
-                  stroke="rgba(100, 210, 255, 0.10)"
-                  strokeWidth={0.04 / mapCamera.zoom}
-                  strokeDasharray="0.18,0.18"
+                  y2={18.8}
+                  stroke="rgba(100, 210, 255, 0.09)"
+                  strokeWidth={0.035 / smoothCamera.zoom}
+                  strokeDasharray="0.16,0.16"
                 />
               ))}
               {[4, 8, 12, 16].map((latInv) => (
                 <Line
                   key={`parallel-${latInv}`}
-                  x1={-48.5}
+                  x1={-48.8}
                   y1={latInv}
                   x2={-34.0}
                   y2={latInv}
-                  stroke="rgba(100, 210, 255, 0.10)"
-                  strokeWidth={0.04 / mapCamera.zoom}
-                  strokeDasharray="0.18,0.18"
+                  stroke="rgba(100, 210, 255, 0.09)"
+                  strokeWidth={0.035 / smoothCamera.zoom}
+                  strokeDasharray="0.16,0.16"
                 />
               ))}
 
-              {/* Polígonos dos 9 Estados do Nordeste */}
+              {/* MALHA CARTOGRÁFICA REAL DO IBGE (9 ESTADOS DO NORDESTE) */}
               <G transform="scale(1, -1)">
+                {/* Camada 1: Brilho Costeiro / Plataforma Continental */}
                 {NORDESTE_STATES.map((st) => {
-                  const poly = UF_GEO_POLYGONS[st.uf];
+                  const mesh = IBGE_OFFICIAL_UF_MESH[st.uf];
+                  return (
+                    <Path
+                      key={`coast-glow-${st.uf}`}
+                      d={mesh.path}
+                      fill="none"
+                      stroke="rgba(56, 189, 248, 0.16)"
+                      strokeWidth={0.18 / Math.sqrt(smoothCamera.zoom)}
+                      strokeLinejoin="round"
+                    />
+                  );
+                })}
+
+                {/* Camada 2: Preenchimento Topográfico e Divisas Estaduais do IBGE */}
+                {NORDESTE_STATES.map((st) => {
+                  const mesh = IBGE_OFFICIAL_UF_MESH[st.uf];
                   const isFocused = selectedUF === st.uf;
                   return (
                     <Path
                       key={st.uf}
-                      d={poly.path}
-                      fill={isFocused ? 'url(#stateFocusedGrad)' : '#101B33'}
-                      stroke={isFocused ? '#64D2FF' : 'rgba(255,255,255,0.22)'}
+                      d={mesh.path}
+                      fill={
+                        isFocused
+                          ? 'url(#ibgeFocusedLandGrad)'
+                          : 'url(#ibgeLandGrad)'
+                      }
+                      stroke={
+                        isFocused ? '#64D2FF' : 'rgba(148, 163, 184, 0.48)'
+                      }
                       strokeWidth={
                         isFocused
-                          ? 0.12 / Math.sqrt(mapCamera.zoom)
-                          : 0.06 / Math.sqrt(mapCamera.zoom)
+                          ? 0.11 / Math.sqrt(smoothCamera.zoom)
+                          : 0.055 / Math.sqrt(smoothCamera.zoom)
                       }
+                      strokeLinejoin="round"
                       onPress={() => selectUF(st.uf)}
                     />
                   );
                 })}
               </G>
 
-              {/* Siglas das UFs no Radar */}
+              {/* Siglas das UFs posicionadas sobre os centróides do IBGE */}
               {NORDESTE_STATES.map((st) => {
-                const poly = UF_GEO_POLYGONS[st.uf];
+                const mesh = IBGE_OFFICIAL_UF_MESH[st.uf];
                 const isFocused = selectedUF === st.uf;
                 return (
                   <SvgText
                     key={`label-${st.uf}`}
-                    x={poly.labelLng}
-                    y={-poly.labelLat}
-                    fill={isFocused ? '#64D2FF' : 'rgba(203, 213, 225, 0.65)'}
-                    fontSize={0.52 / Math.sqrt(mapCamera.zoom)}
+                    x={mesh.labelLng}
+                    y={-mesh.labelLat}
+                    fill={isFocused ? '#64D2FF' : 'rgba(203, 213, 225, 0.58)'}
+                    fontSize={0.48 / Math.sqrt(smoothCamera.zoom)}
                     fontWeight="700"
                     textAnchor="middle"
                   >
@@ -441,28 +512,53 @@ export default function MapaNordesteScreen() {
                 );
               })}
 
-              {/* Halos de Calor & Clusters Numéricos Dark Glass */}
-              {clusters.map((item) => {
+              {/* FOCOS & CLUSTERS COM EXIBIÇÃO DO NOME DA CIDADE AO CLICAR */}
+              {orderedClusters.map((item) => {
                 const cx = item.longitude;
                 const cy = -item.latitude;
                 const sevColor = getSeverityColors(item.maxSeverity).bg;
                 const isSelectedSpot =
-                  activeSpot &&
-                  item.spots.some((s) => s.id === activeSpot.id);
+                  item.id === clickedClusterId ||
+                  Boolean(
+                    activeSpot &&
+                      item.spots.some((s) => s.id === activeSpot.id)
+                  );
                 const radius = item.isCluster
-                  ? 0.46 / Math.sqrt(mapCamera.zoom)
-                  : 0.34 / Math.sqrt(mapCamera.zoom);
+                  ? 0.44 / Math.sqrt(smoothCamera.zoom)
+                  : 0.33 / Math.sqrt(smoothCamera.zoom);
+
+                // Lista única de cidades dentro do foco/cluster clicado
+                const uniqueCities = Array.from(
+                  new Set(item.spots.map((s) => s.municipality))
+                );
+                const cityCalloutTitle =
+                  uniqueCities.length > 1
+                    ? `${uniqueCities[0]} +${uniqueCities.length - 1} (${item.uf})`
+                    : `${item.primaryMunicipality} (${item.uf})`;
+                const cityCalloutSub = `${item.avgFrpMW.toFixed(0)} MW • ${item.spots[0].biome}`;
+
+                const showCityLabel =
+                  isSelectedSpot || smoothCamera.zoom >= 1.95;
+
+                const boxW =
+                  (isSelectedSpot ? 3.55 : 2.65) /
+                  Math.sqrt(smoothCamera.zoom);
+                const boxH =
+                  (isSelectedSpot ? 0.84 : 0.48) /
+                  Math.sqrt(smoothCamera.zoom);
+                const boxX = cx - boxW / 2;
+                const boxY = cy - radius * 1.45 - boxH;
 
                 return (
                   <G
                     key={item.id}
                     onPress={() => handleClusterOrSpotPress(item)}
                   >
-                    {/* Halo térmico suave estilo mapa de calor iOS Weather */}
+                    {/* Halo térmico suave */}
                     <Circle
                       cx={cx}
                       cy={cy}
-                      r={radius * 2.6}
+                      r={radius * (isSelectedSpot ? 3.1 : 2.4)}
                       fill={
                         item.maxSeverity === 'critico'
                           ? 'url(#heatHaloCritico)'
@@ -470,16 +566,28 @@ export default function MapaNordesteScreen() {
                       }
                     />
 
-                    {/* Anel de foco selecionado */}
+                    {/* Anéis de Radar Pulsantes no foco clicado */}
                     {isSelectedSpot ? (
-                      <Circle
-                        cx={cx}
-                        cy={cy}
-                        r={radius * 1.55}
-                        fill="none"
-                        stroke="#64D2FF"
-                        strokeWidth={0.08 / Math.sqrt(mapCamera.zoom)}
-                      />
+                      <G>
+                        <Circle
+                          cx={cx}
+                          cy={cy}
+                          r={radius * 1.95}
+                          fill="none"
+                          stroke="#64D2FF"
+                          strokeOpacity={0.55}
+                          strokeWidth={0.05 / Math.sqrt(smoothCamera.zoom)}
+                          strokeDasharray="0.12,0.08"
+                        />
+                        <Circle
+                          cx={cx}
+                          cy={cy}
+                          r={radius * 1.42}
+                          fill="none"
+                          stroke="#FFFFFF"
+                          strokeWidth={0.075 / Math.sqrt(smoothCamera.zoom)}
+                        />
+                      </G>
                     ) : null}
 
                     {/* Marcador circular principal */}
@@ -489,7 +597,7 @@ export default function MapaNordesteScreen() {
                       r={radius}
                       fill={sevColor}
                       stroke="#080E1E"
-                      strokeWidth={0.08 / Math.sqrt(mapCamera.zoom)}
+                      strokeWidth={0.08 / Math.sqrt(smoothCamera.zoom)}
                     />
 
                     {/* Número de focos no cluster */}
@@ -504,39 +612,103 @@ export default function MapaNordesteScreen() {
                       {item.count}
                     </SvgText>
 
-                    {/* Rótulo Dark Glass do município em zoom próximo (>= 2.2) */}
-                    {mapCamera.zoom >= 2.2 ? (
+                    {/* CALLOUT COM O NOME DA CIDADE (Sempre visível no foco clicado ou em zoom >= 1.95) */}
+                    {showCityLabel ? (
                       <G>
+                        {/* Seta apontando para o foco */}
+                        <Polygon
+                          points={`${cx - 0.14 / Math.sqrt(smoothCamera.zoom)},${boxY + boxH} ${cx + 0.14 / Math.sqrt(smoothCamera.zoom)},${boxY + boxH} ${cx},${cy - radius * 1.08}`}
+                          fill={isSelectedSpot ? '#0A1936' : '#0D162B'}
+                        />
                         <Rect
-                          x={cx - 1.4 / Math.sqrt(mapCamera.zoom)}
-                          y={cy + radius * 1.25}
-                          width={2.8 / Math.sqrt(mapCamera.zoom)}
-                          height={0.54 / Math.sqrt(mapCamera.zoom)}
-                          rx={0.16 / Math.sqrt(mapCamera.zoom)}
-                          fill="#0D162B"
-                          stroke="rgba(100, 210, 255, 0.45)"
-                          strokeWidth={0.03 / Math.sqrt(mapCamera.zoom)}
+                          x={boxX}
+                          y={boxY}
+                          width={boxW}
+                          height={boxH}
+                          rx={0.16 / Math.sqrt(smoothCamera.zoom)}
+                          fill={isSelectedSpot ? '#0A1936' : '#0D162B'}
+                          stroke={
+                            isSelectedSpot
+                              ? '#64D2FF'
+                              : 'rgba(255, 255, 255, 0.28)'
+                          }
+                          strokeWidth={
+                            (isSelectedSpot ? 0.055 : 0.03) /
+                            Math.sqrt(smoothCamera.zoom)
+                          }
                         />
                         <SvgText
                           x={cx}
                           y={
-                            cy +
-                            radius * 1.25 +
-                            0.37 / Math.sqrt(mapCamera.zoom)
+                            boxY +
+                            (isSelectedSpot ? 0.36 : 0.33) /
+                              Math.sqrt(smoothCamera.zoom)
                           }
-                          fill="#F8FAFC"
-                          fontSize={0.29 / Math.sqrt(mapCamera.zoom)}
-                          fontWeight="700"
+                          fill="#FFFFFF"
+                          fontSize={
+                            (isSelectedSpot ? 0.31 : 0.26) /
+                            Math.sqrt(smoothCamera.zoom)
+                          }
+                          fontWeight="800"
                           textAnchor="middle"
                         >
-                          {item.primaryMunicipality}
+                          {cityCalloutTitle}
                         </SvgText>
+                        {isSelectedSpot ? (
+                          <SvgText
+                            x={cx}
+                            y={boxY + 0.68 / Math.sqrt(smoothCamera.zoom)}
+                            fill="#FFD60A"
+                            fontSize={0.23 / Math.sqrt(smoothCamera.zoom)}
+                            fontWeight="700"
+                            textAnchor="middle"
+                          >
+                            {cityCalloutSub}
+                          </SvgText>
+                        ) : null}
                       </G>
                     ) : null}
                   </G>
                 );
               })}
             </Svg>
+
+            {/* PÍLULA FLUTUANTE DA CIDADE CLICADA NO TOPO ESQUERDO DO RADAR */}
+            {activeSpot ? (
+              <View style={styles.selectedCityFloatingCard}>
+                <View style={styles.selectedCityTopRow}>
+                  <View style={styles.selectedCityBadgeDot} />
+                  <Text style={styles.selectedCityNameText}>
+                    {activeSpot.municipality} ({activeSpot.uf})
+                  </Text>
+                  <Text style={styles.selectedCityFrpText}>
+                    • {activeSpot.frpMW.toFixed(1)} MW ({activeSpot.biome})
+                  </Text>
+                </View>
+
+                <Pressable
+                  onPress={() =>
+                    Linking.openURL(
+                      buildGoogleMapsSpotUrl(
+                        activeSpot.latitude,
+                        activeSpot.longitude,
+                        15
+                      )
+                    )
+                  }
+                  style={({ pressed }) => [
+                    styles.selectedCityMapsBtn,
+                    pressed && styles.btnPressed,
+                  ]}
+                  accessibilityRole="link"
+                >
+                  <Ionicons name="location" size={12} color="#30D158" />
+                  <Text style={styles.selectedCityMapsBtnText}>
+                    Abrir {activeSpot.municipality} no Google Maps ↗
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
 
             {/* Controles Flutuantes Dark Glass (>= 48x48 dp) */}
             <View style={styles.mapControlsOverlay}>
@@ -565,7 +737,10 @@ export default function MapaNordesteScreen() {
               </Pressable>
 
               <Pressable
-                onPress={resetMapToNordeste}
+                onPress={() => {
+                  setClickedClusterId(null);
+                  resetMapToNordeste();
+                }}
                 style={({ pressed }) => [
                   styles.resetZoomButton,
                   pressed && styles.btnPressed,
@@ -598,8 +773,9 @@ export default function MapaNordesteScreen() {
               >
                 <Ionicons name="location-outline" size={14} color="#64D2FF" />
                 <Text style={styles.mapTelemetryText}>
-                  Centro: {mapCamera.latitude.toFixed(2)}°,{' '}
-                  {mapCamera.longitude.toFixed(2)}° (Abrir Google Maps ↗)
+                  {activeSpot
+                    ? `${activeSpot.municipality} (${activeSpot.uf}): ${activeSpot.latitude.toFixed(3)}°, ${activeSpot.longitude.toFixed(3)}° (Google Maps ↗)`
+                    : `Centro: ${mapCamera.latitude.toFixed(2)}°, ${mapCamera.longitude.toFixed(2)}° (Google Maps ↗)`}
                 </Text>
               </Pressable>
               <View style={styles.legendRow}>
@@ -628,16 +804,23 @@ export default function MapaNordesteScreen() {
       </View>
 
       {/* 3. GRÁFICO DE CURVA HORÁRIA COM GRADIENTE (ESTILO APP TEMPO iOS) */}
-      <FrpOrbitalAreaChart spots={filteredSpots.length > 0 ? filteredSpots : spots} />
+      <FrpOrbitalAreaChart
+        spots={filteredSpots.length > 0 ? filteredSpots : spots}
+      />
 
       {/* 4. BENTO WIDGETS AMBIENTAIS (ÍNDICE DE IGNIÇÃO + PRESSÃO POR BIOMA) */}
-      <BentoEnvironmentalWidgets spots={filteredSpots.length > 0 ? filteredSpots : spots} />
+      <BentoEnvironmentalWidgets
+        spots={filteredSpots.length > 0 ? filteredSpots : spots}
+      />
 
       {/* 5. BARRAS DE AMPLITUDE TÉRMICA POR UF (ESTILO PREVISÃO DE 10 DIAS DO iOS) */}
       <StateThermalRangeBars
         allSpots={spots}
         selectedUF={selectedUF}
-        onSelectUF={(uf) => selectUF(uf)}
+        onSelectUF={(uf) => {
+          setClickedClusterId(null);
+          selectUF(uf);
+        }}
       />
 
       {/* 6. INSPEÇÃO DETALHADA DO FOCO SELECIONADO */}
@@ -741,7 +924,11 @@ export default function MapaNordesteScreen() {
                   {activeSpot.ibgeCode}
                 </Text>
                 <View style={styles.gmapsBadge}>
-                  <Ionicons name="navigate-circle-outline" size={15} color="#30D158" />
+                  <Ionicons
+                    name="navigate-circle-outline"
+                    size={15}
+                    color="#30D158"
+                  />
                   <Text style={styles.gmapsBadgeText}>
                     Consultar Foco no Google Maps ↗
                   </Text>
@@ -757,7 +944,7 @@ export default function MapaNordesteScreen() {
         )}
       </View>
 
-      {/* 7. CARTÃO INSTITUCIONAL COMPLETO (IFPI CAMPUS FLORIANO • TURMA TDS-3 • PROF. RENNÊ SANTOS) */}
+      {/* 7. RODAPÉ INSTITUCIONAL COMPLETO (IFPI CAMPUS FLORIANO • TDS-3 • PROF. RENNÊ SANTOS @oxe.renne + FONTES) */}
       <InstitutionalCreditsCard />
     </ScrollView>
   );
@@ -769,139 +956,143 @@ const styles = StyleSheet.create({
     backgroundColor: APPLE_CALM_THEME.colors.background,
   },
   scrollContent: {
-    padding: 16,
-    gap: 16,
+    padding: 14,
+    gap: 14,
     paddingBottom: 34,
   },
-  weatherHeroContainer: {
-    backgroundColor: 'rgba(15, 24, 46, 0.72)',
-    borderRadius: 24,
-    paddingVertical: 20,
-    paddingHorizontal: 18,
+  compactHeroCard: {
+    backgroundColor: 'rgba(15, 24, 46, 0.76)',
+    borderRadius: 18,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(255, 255, 255, 0.14)',
+    gap: 10,
+  },
+  compactHeroMainRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  compactHeroLeft: {
+    flex: 1,
+    minWidth: 220,
+    gap: 2,
   },
   heroTopPill: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-start',
     gap: 5,
-    backgroundColor: 'rgba(10, 132, 255, 0.16)',
+    backgroundColor: 'rgba(10, 132, 255, 0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(100, 210, 255, 0.3)',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    borderColor: 'rgba(100, 210, 255, 0.28)',
+    paddingHorizontal: 9,
+    paddingVertical: 2,
     borderRadius: 999,
-    marginBottom: 8,
+    marginBottom: 2,
   },
   heroTopPillText: {
     fontFamily: APPLE_CALM_THEME.fonts.mono,
-    fontSize: 10.5,
+    fontSize: 9.5,
     fontWeight: '700',
     color: '#64D2FF',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   heroLocationName: {
     fontFamily: APPLE_CALM_THEME.fonts.heading,
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: 21,
+    fontWeight: '800',
     color: '#F8FAFC',
-    textAlign: 'center',
-    letterSpacing: -0.5,
+    letterSpacing: -0.4,
   },
-  heroNumberRow: {
+  heroConditionText: {
+    fontFamily: APPLE_CALM_THEME.fonts.body,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFD60A',
+  },
+  compactCountBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 14,
-    marginVertical: 4,
+    gap: 10,
+    backgroundColor: 'rgba(8, 13, 26, 0.55)',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
-  heroGiantNumber: {
+  heroCompactNumber: {
     fontFamily: APPLE_CALM_THEME.fonts.heading,
-    fontSize: 64,
+    fontSize: 34,
     fontWeight: '800',
     color: '#FFFFFF',
-    letterSpacing: -2,
-    lineHeight: 70,
+    letterSpacing: -1,
+    lineHeight: 38,
   },
   heroUnitCol: {
     justifyContent: 'center',
-    gap: 3,
+    gap: 1,
   },
   heroUnitTitle: {
     fontFamily: APPLE_CALM_THEME.fonts.mono,
-    fontSize: 12,
+    fontSize: 10.5,
     fontWeight: '700',
     color: '#FF9F0A',
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
   },
   heroUnitSub: {
     fontFamily: APPLE_CALM_THEME.fonts.mono,
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600',
     color: '#CBD5E1',
   },
   heroSkeletonNum: {
-    width: 140,
-    height: 62,
-    borderRadius: 14,
+    width: 120,
+    height: 44,
+    borderRadius: 12,
     backgroundColor: APPLE_CALM_THEME.colors.skeletonBase,
-    marginVertical: 8,
   },
-  heroConditionText: {
-    fontFamily: APPLE_CALM_THEME.fonts.body,
-    fontSize: 14.5,
-    fontWeight: '600',
-    color: '#FFD60A',
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  heroHighLowText: {
-    fontFamily: APPLE_CALM_THEME.fonts.mono,
-    fontSize: 12,
-    color: '#CBD5E1',
-    textAlign: 'center',
-    marginTop: 4,
-    marginBottom: 14,
-  },
-  heroActionsRow: {
+  compactActionsCol: {
     flexDirection: 'row',
+    alignItems: 'center',
     flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 10,
-    marginBottom: 14,
+    gap: 8,
   },
   searchCityGlassBtn: {
-    minHeight: 42,
-    paddingHorizontal: 16,
+    minHeight: 36,
+    paddingHorizontal: 13,
     borderRadius: 999,
     backgroundColor: 'rgba(10, 132, 255, 0.22)',
     borderWidth: 1,
     borderColor: 'rgba(100, 210, 255, 0.45)',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    gap: 6,
   },
   searchCityGlassBtnText: {
     fontFamily: APPLE_CALM_THEME.fonts.body,
-    fontSize: 13.5,
+    fontSize: 12.5,
     fontWeight: '700',
     color: '#64D2FF',
   },
   resetFilterGlassBtn: {
-    minHeight: 42,
-    paddingHorizontal: 14,
+    minHeight: 36,
+    paddingHorizontal: 12,
     borderRadius: 999,
     backgroundColor: 'rgba(255, 214, 10, 0.14)',
     borderWidth: 1,
     borderColor: 'rgba(255, 214, 10, 0.35)',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
   resetFilterGlassText: {
     fontFamily: APPLE_CALM_THEME.fonts.body,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: '#FFD60A',
   },
@@ -910,16 +1101,16 @@ const styles = StyleSheet.create({
   },
   segmentedScroll: {
     flexDirection: 'row',
-    gap: 8,
-    paddingVertical: 2,
+    gap: 6,
+    paddingTop: 2,
   },
   segmentPill: {
-    minHeight: 42,
-    paddingHorizontal: 14,
-    borderRadius: 12,
+    minHeight: 34,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     backgroundColor: 'rgba(9, 15, 30, 0.65)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: 'rgba(255, 255, 255, 0.11)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -929,7 +1120,7 @@ const styles = StyleSheet.create({
   },
   segmentPillText: {
     fontFamily: APPLE_CALM_THEME.fonts.body,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: '#CBD5E1',
   },
@@ -943,17 +1134,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: APPLE_CALM_THEME.colors.border,
     overflow: 'hidden',
-    height: 440,
+    height: 465,
   },
   mapCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 11,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: 'rgba(9, 15, 29, 0.55)',
+    backgroundColor: 'rgba(9, 15, 29, 0.65)',
   },
   mapHeaderLeft: {
     flexDirection: 'row',
@@ -964,7 +1155,7 @@ const styles = StyleSheet.create({
   mapZoomBadge: {
     fontFamily: APPLE_CALM_THEME.fonts.mono,
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#64D2FF',
   },
   sectionEyebrow: {
@@ -1001,8 +1192,63 @@ const styles = StyleSheet.create({
   },
   mapViewport: {
     flex: 1,
-    backgroundColor: '#070D1B',
+    backgroundColor: '#060C1A',
     position: 'relative',
+  },
+  selectedCityFloatingCard: {
+    position: 'absolute',
+    left: 14,
+    top: 14,
+    backgroundColor: 'rgba(9, 16, 32, 0.92)',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 210, 255, 0.42)',
+    gap: 5,
+    maxWidth: 320,
+  },
+  selectedCityTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  selectedCityBadgeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF453A',
+  },
+  selectedCityNameText: {
+    fontFamily: APPLE_CALM_THEME.fonts.heading,
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  selectedCityFrpText: {
+    fontFamily: APPLE_CALM_THEME.fonts.mono,
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#FFD60A',
+  },
+  selectedCityMapsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    backgroundColor: 'rgba(48, 209, 88, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(48, 209, 88, 0.38)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  selectedCityMapsBtnText: {
+    fontFamily: APPLE_CALM_THEME.fonts.body,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#30D158',
   },
   mapControlsOverlay: {
     position: 'absolute',
@@ -1011,8 +1257,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   zoomControlButton: {
-    width: 48,
-    height: 48,
+    width: 46,
+    height: 46,
     borderRadius: 14,
     backgroundColor: 'rgba(15, 24, 46, 0.88)',
     borderWidth: 1,
@@ -1021,8 +1267,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   resetZoomButton: {
-    width: 48,
-    height: 48,
+    width: 46,
+    height: 46,
     borderRadius: 14,
     backgroundColor: 'rgba(15, 24, 46, 0.88)',
     borderWidth: 1,
@@ -1032,20 +1278,20 @@ const styles = StyleSheet.create({
   },
   zoomButtonSymbol: {
     fontFamily: APPLE_CALM_THEME.fonts.heading,
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '600',
     color: '#F8FAFC',
-    lineHeight: 26,
+    lineHeight: 24,
   },
   mapTelemetryBar: {
     position: 'absolute',
     left: 12,
     right: 12,
     bottom: 12,
-    backgroundColor: 'rgba(9, 15, 29, 0.90)',
+    backgroundColor: 'rgba(9, 15, 29, 0.92)',
     borderRadius: 14,
     paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingVertical: 8,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.14)',
     flexDirection: 'row',

@@ -192,6 +192,7 @@ export default function RootLayout() {
   // Injeção de Fontes Contrastantes (Outfit, Lexend, Plus Jakarta Sans, JetBrains Mono) + Gradiente Atmosférico iOS Weather na Web
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      document.title = 'Radar Fogo — Monitor Orbital de Queimadas | IFPI Floriano (TDS-3)';
       const existing = document.getElementById('snct-ios-weather-fonts');
       if (!existing) {
         const link = document.createElement('link');
@@ -482,7 +483,7 @@ export default function RootLayout() {
         >
           <View style={styles.bannerTopRow}>
             <View style={styles.brandAndSourceRow}>
-              <AppLogoEmblem size={46} />
+              <AppLogoEmblem size={40} />
               <View style={styles.brandTextCol}>
                 <View style={styles.brandTitleInline}>
                   <Text style={styles.appBrandName}>Radar Fogo</Text>
@@ -495,7 +496,7 @@ export default function RootLayout() {
                 <View style={styles.sourceBadgeRow}>
                   <View style={styles.statusDot} />
                   <Text style={styles.transparencySourceText}>
-                    Fonte: CENSIPAM / INPE | Atualização automática a cada 10-30 min
+                    Telemetria ativa (10–30 min) • Fontes detalhadas no rodapé e aba Sobre
                   </Text>
                 </View>
               </View>
@@ -547,7 +548,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: APPLE_CALM_THEME.colors.border,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 7,
   },
   bannerTopRow: {
     flexDirection: 'row',
@@ -600,16 +601,16 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: APPLE_CALM_THEME.colors.syncGreen,
   },
   transparencySourceText: {
     fontFamily: APPLE_CALM_THEME.fonts.body,
-    fontSize: 12,
-    fontWeight: '500',
-    color: APPLE_CALM_THEME.colors.textSecondary,
+    fontSize: 10.5,
+    fontWeight: '400',
+    color: APPLE_CALM_THEME.colors.textMuted,
   },
   syncButton: {
     minHeight: 36,
