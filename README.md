@@ -1,7 +1,7 @@
-# PyroCast NE — Monitor de Queimadas Acessível (SNCT)
+# Radar Fogo — Monitor de Queimadas Acessível (SNCT)
 
 <p align="center">
-  <img src="./public/logo-app-ifpi.png" alt="Logo PyroCast NE - IFPI Campus Floriano" width="140" style="border-radius: 32px;" />
+  <img src="./public/logo-radar-fogo.png" alt="Logo Radar Fogo - IFPI Campus Floriano" width="160" style="border-radius: 34px;" />
 </p>
 
 > **Projeto Institucional:** **IFPI — Campus Floriano** (Instituto Federal do Piauí)  
@@ -13,7 +13,7 @@
 
 ## 1. Visão Geral & Design System (Estilo App *Tempo* do iOS • Dark Glass)
 
-O **PyroCast NE** é um *Progressive Web App* (PWA) construído em **React Native com Expo Router**, projetado sob a estética **Apple iOS 18 Weather (*App Tempo*) Dark Glass** combinada com diretrizes de **acessibilidade cognitiva para TDAH e TEA Nível 1** (`CLS = 0.000` e isolamento municipal em `<= 3 cliques`).
+O **Radar Fogo** é um *Progressive Web App* (PWA) construído em **React Native com Expo Router**, projetado sob a estética **Apple iOS 18 Weather (*App Tempo*) Dark Glass** combinada com diretrizes de **acessibilidade cognitiva para TDAH e TEA Nível 1** (`CLS = 0.000` e isolamento municipal em `<= 3 cliques`).
 
 ### Destaques Visuais e Gráficos com Gradiente:
 1. **Hero Atmosférico estilo App Tempo do iOS:** Exibição central de alto impacto com contagem orbital ativa, potência radiativa máxima (FRP em MW), resumo de severidade por bioma e filtro imediato para os 9 estados do Nordeste (`MA`, `PI`, `CE`, `RN`, `PB`, `PE`, `AL`, `SE`, `BA`), com destaque para **Floriano (PI)**.
@@ -28,10 +28,10 @@ O **PyroCast NE** é um *Progressive Web App* (PWA) construído em **React Nativ
 
 ```text
 /
-├── app.json                             # Metadados PWA Dark Glass, ícone e identidade IFPI TDS-3
+├── app.json                             # Metadados PWA Dark Glass, ícone e identidade Radar Fogo / IFPI TDS-3
 ├── package.json                         # Dependências Expo Router, React Native Web e SVG
 ├── public/
-│   ├── logo-app-ifpi.png                # Logo oficial 3D Dark Glass gerada para o app
+│   ├── logo-radar-fogo.png              # Logo oficial 3D Dark Glass com "RADAR FOGO" em destaque
 │   └── preview-snct.html                # Versão standalone para apresentação offline
 └── app/
     ├── _layout.tsx                      # Tema Dark Glass (#070C18), Barra CENSIPAM/INPE e Faixa IFPI

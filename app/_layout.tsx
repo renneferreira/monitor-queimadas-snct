@@ -482,10 +482,10 @@ export default function RootLayout() {
         >
           <View style={styles.bannerTopRow}>
             <View style={styles.brandAndSourceRow}>
-              <AppLogoEmblem size={38} />
+              <AppLogoEmblem size={46} />
               <View style={styles.brandTextCol}>
                 <View style={styles.brandTitleInline}>
-                  <Text style={styles.appBrandName}>PyroCast NE</Text>
+                  <Text style={styles.appBrandName}>Radar Fogo</Text>
                   <View style={styles.ifpiHeaderBadge}>
                     <Text style={styles.ifpiHeaderBadgeText}>
                       IFPI • Campus Floriano • TDS-3

@@ -95,17 +95,17 @@ export function AppLogoEmblem({ size = 52 }: AppLogoBadgeProps) {
         },
       ]}
       accessibilityRole="image"
-      accessibilityLabel="Logo do App Monitor Orbital de Queimadas - IFPI Campus Floriano Turma TDS-3"
+      accessibilityLabel="Logo Radar Fogo - Monitor Orbital de Queimadas - IFPI Campus Floriano Turma TDS-3"
     >
       {Platform.OS === 'web' ? (
         <Image
-          source={{ uri: '/logo-app-ifpi.png' }}
+          source={{ uri: '/logo-radar-fogo.png' }}
           style={{
             width: size,
             height: size,
-            borderRadius: Math.round(size * 0.26),
+            borderRadius: Math.round(size * 0.24),
             borderWidth: 1,
-            borderColor: 'rgba(255,255,255,0.26)',
+            borderColor: 'rgba(255,255,255,0.28)',
           }}
         />
       ) : (
@@ -177,7 +177,19 @@ export function AppLogoEmblem({ size = 52 }: AppLogoBadgeProps) {
           />
 
           {/* Núcleo Brilhante */}
-          <Circle cx="32" cy="40.5" r="5" fill="#FFF7ED" fillOpacity="0.9" />
+          <Circle cx="32" cy="36.5" r="4.2" fill="#FFF7ED" fillOpacity="0.9" />
+
+          {/* Nome RADAR FOGO em destaque na base do emblema vetorial */}
+          <SvgText
+            x="32"
+            y="57"
+            fill="#FFFFFF"
+            fontSize="7.2"
+            fontWeight="800"
+            textAnchor="middle"
+          >
+            RADAR FOGO
+          </SvgText>
         </Svg>
       )}
     </View>
@@ -217,7 +229,7 @@ export function InstitutionalCreditsCard({
     <View style={styles.institutionalCard}>
       <View style={styles.institutionalTopRow}>
         <View style={styles.institutionalLogoRow}>
-          <AppLogoEmblem size={58} />
+          <AppLogoEmblem size={76} />
           <View style={styles.institutionalTitleCol}>
             <View style={styles.ifpiTagPill}>
               <View style={styles.ifpiTagDotRed} />
@@ -227,19 +239,19 @@ export function InstitutionalCreditsCard({
               </Text>
             </View>
             <Text style={styles.institutionalMainTitle}>
-              PyroCast NE — Monitor Acessível de Queimadas
+              Radar Fogo — Monitor Orbital de Queimadas
             </Text>
             <Text style={styles.institutionalSubtitle}>
-              Semana Nacional de Ciência e Tecnologia (SNCT / MCTI)
+              Semana Nacional de Ciência e Tecnologia (SNCT / MCTI) • Região Nordeste
             </Text>
           </View>
         </View>
 
         {Platform.OS === 'web' ? (
           <Image
-            source={{ uri: '/logo-app-ifpi.png' }}
+            source={{ uri: '/logo-radar-fogo.png' }}
             style={styles.generatedLogoPreview}
-            accessibilityLabel="Arte oficial da logo do aplicativo"
+            accessibilityLabel="Logo oficial Radar Fogo em destaque"
           />
         ) : null}
       </View>
@@ -1006,11 +1018,11 @@ const styles = StyleSheet.create({
     color: IOS_WEATHER_GLASS.colors.textSecondary,
   },
   generatedLogoPreview: {
-    width: 56,
-    height: 56,
-    borderRadius: 15,
+    width: 76,
+    height: 76,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
+    borderColor: 'rgba(255,255,255,0.28)',
   },
   creditsBadgesGrid: {
     flexDirection: 'row',

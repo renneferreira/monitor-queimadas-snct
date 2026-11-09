@@ -1,38 +1,38 @@
 {
   "expo": {
-    "name": "PyroCast NE — Monitor de Queimadas (IFPI Floriano • TDS-3)",
+    "name": "Radar Fogo — Monitor de Queimadas (IFPI Floriano • TDS-3)",
     "slug": "monitor-queimadas-snct",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
-    "scheme": "monitorqueimadassnct",
+    "scheme": "radarfogoifpi",
     "userInterfaceStyle": "dark",
-    "icon": "./public/logo-app-ifpi.png",
+    "icon": "./public/logo-radar-fogo.png",
     "backgroundColor": "#070C18",
     "primaryColor": "#0A84FF",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "br.edu.ifpi.floriano.tds3.monitorqueimadas"
+      "bundleIdentifier": "br.edu.ifpi.floriano.tds3.radarfogo"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./public/logo-app-ifpi.png",
+        "foregroundImage": "./public/logo-radar-fogo.png",
         "backgroundColor": "#070C18"
       },
-      "package": "br.edu.ifpi.floriano.tds3.monitorqueimadas"
+      "package": "br.edu.ifpi.floriano.tds3.radarfogo"
     },
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./public/logo-app-ifpi.png",
-      "name": "PyroCast NE — Monitor de Queimadas (IFPI Campus Floriano • TDS-3)",
-      "shortName": "PyroCast IFPI",
+      "favicon": "./public/logo-radar-fogo.png",
+      "name": "Radar Fogo — Monitor de Queimadas (IFPI Campus Floriano • TDS-3)",
+      "shortName": "Radar Fogo",
       "lang": "pt-BR",
       "scope": "/",
       "themeColor": "#070C18",
       "backgroundColor": "#070C18",
       "display": "standalone",
       "orientation": "any",
-      "description": "Projeto do IFPI - Campus Floriano desenvolvido pela Turma TDS-3 sob supervisão do Prof. Rennê Santos. PWA Dark Glass estilo App Tempo do iOS para monitoramento orbital de queimadas no Nordeste (INPE/CENSIPAM)."
+      "description": "Radar Fogo — Projeto do IFPI - Campus Floriano desenvolvido pela Turma TDS-3 sob supervisão do Prof. Rennê Santos. PWA Dark Glass estilo App Tempo do iOS para monitoramento orbital de queimadas no Nordeste (INPE/CENSIPAM)."
     },
     "plugins": [
       "expo-router"

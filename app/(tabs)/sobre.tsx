@@ -60,17 +60,17 @@ export default function SobreTransparenciaScreen() {
     const avgClicks =
       totalFilterRuns > 0
         ? (
-            filterLogs.reduce((acc, l) => acc + l.clicksUsed, 0) /
-            totalFilterRuns
-          ).toFixed(2)
+          filterLogs.reduce((acc, l) => acc + l.clicksUsed, 0) /
+          totalFilterRuns
+        ).toFixed(2)
         : '2.00';
 
     const avgSkeletonLeadMs =
       skeletonLogs.length > 0
         ? Math.round(
-            skeletonLogs.reduce((acc, s) => acc + s.skeletonLeadTimeMs, 0) /
-              skeletonLogs.length
-          )
+          skeletonLogs.reduce((acc, s) => acc + s.skeletonLeadTimeMs, 0) /
+          skeletonLogs.length
+        )
         : 380;
 
     return {
