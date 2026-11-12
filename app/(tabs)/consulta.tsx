@@ -21,6 +21,7 @@ import {
   normalizeSearchText,
 } from '../services/fireDataService';
 import { InstitutionalCreditsCard } from '../components/IosWeatherWidgets';
+import { InlineGoogleSatelliteCard } from '../components/InlineGoogleSatelliteCard';
 import {
   estimateRegionalClimate,
   getRiskMetaFromSeverity,
@@ -34,6 +35,7 @@ export default function ConsultaSeletivaScreen() {
     selectedMunicipality,
     currentFilterClicks,
     filterLogs,
+    criticalCitiesRanking,
     selectUF,
     selectMunicipality,
     selectSpotOnMap,
@@ -238,6 +240,71 @@ export default function ConsultaSeletivaScreen() {
             );
           })}
         </View>
+
+        {/* SINCRONIZAÇÃO EM BACKGROUND: ATALHOS DIRETOS PARA CIDADES EM RISCO CRÍTICO/ALTO */}
+        {criticalCitiesRanking.length > 0 && (
+          <View style={styles.criticalShortcutContainer}>
+            <View style={styles.criticalShortcutHeader}>
+              <Ionicons name="flash-outline" size={14} color="#FFD60A" />
+              <Text style={styles.criticalShortcutTitle}>
+                SINCRONIZAÇÃO EM SEGUNDO PLANO • CIDADES COM MAIOR RISCO:
+              </Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.criticalShortcutScroll}
+            >
+              {criticalCitiesRanking.slice(0, 6).map((item) => {
+                const isItemActive =
+                  selectedMunicipality?.toLowerCase() ===
+                  item.municipality.toLowerCase();
+                const badgeColor =
+                  item.maxSeverity === 'critico'
+                    ? '#FF453A'
+                    : item.maxSeverity === 'alto'
+                    ? '#FF9F0A'
+                    : '#FFD60A';
+
+                return (
+                  <Pressable
+                    key={`quick-${item.municipality}-${item.uf}`}
+                    onPress={() => {
+                      selectMunicipality(
+                        item.uf,
+                        item.municipality,
+                        item.latitude,
+                        item.longitude
+                      );
+                    }}
+                    style={({ pressed }) => [
+                      styles.criticalPill,
+                      isItemActive && styles.criticalPillActive,
+                      pressed && styles.btnPressed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Selecionar ${item.municipality} ${item.uf}, ${item.spotCount} focos ativos`}
+                  >
+                    <View
+                      style={[
+                        styles.criticalPillDot,
+                        { backgroundColor: badgeColor },
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        styles.criticalPillText,
+                        isItemActive && styles.criticalPillTextActive,
+                      ]}
+                    >
+                      {item.municipality} ({item.uf}) • {item.spotCount} focos
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
       </View>
 
       {/* PASSO 2: SELEÇÃO POR CIDADE (BUSCA PREDITIVA CALMA + LISTA IBGE) */}
@@ -480,6 +547,30 @@ export default function ConsultaSeletivaScreen() {
         {selectedMunicipality ? (
           localMunicipalitySpots.length > 0 ? (
             <View style={styles.localSpotsList}>
+              {/* Card de Satélite Google Maps Integrado Inline */}
+              <InlineGoogleSatelliteCard
+                municipality={selectedMunicipality}
+                uf={activeUF}
+                latitude={localMunicipalitySpots[0].latitude}
+                longitude={localMunicipalitySpots[0].longitude}
+                riskLabel={
+                  localMunicipalitySpots[0].severity === 'critico'
+                    ? 'Risco Crítico'
+                    : localMunicipalitySpots[0].severity === 'alto'
+                    ? 'Risco Alto'
+                    : 'Risco Médio'
+                }
+                riskColor={
+                  localMunicipalitySpots[0].severity === 'critico'
+                    ? '#FF453A'
+                    : localMunicipalitySpots[0].severity === 'alto'
+                    ? '#FF9F0A'
+                    : '#FFD60A'
+                }
+                frpMW={localMunicipalitySpots[0].frpMW}
+                spotCount={localMunicipalitySpots.length}
+              />
+
               {localMunicipalitySpots.map((spot) => {
                 const spotRisk = getRiskMetaFromSeverity(spot.severity, 1);
                 return (
@@ -1002,6 +1093,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: APPLE_CALM_THEME.colors.textSecondary,
     lineHeight: 20,
+  },
+  criticalShortcutContainer: {
+    marginTop: 12,
+    gap: 6,
+  },
+  criticalShortcutHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  criticalShortcutTitle: {
+    fontFamily: APPLE_CALM_THEME.fonts.mono,
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#FFD60A',
+    letterSpacing: 0.3,
+  },
+  criticalShortcutScroll: {
+    gap: 8,
+    paddingVertical: 4,
+  },
+  criticalPill: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(9, 14, 28, 0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  criticalPillActive: {
+    backgroundColor: 'rgba(10, 132, 255, 0.25)',
+    borderColor: '#64D2FF',
+  },
+  criticalPillDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  criticalPillText: {
+    fontFamily: APPLE_CALM_THEME.fonts.body,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#E2E8F0',
+  },
+  criticalPillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   btnPressed: {
     opacity: 0.85,

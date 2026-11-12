@@ -21,6 +21,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import {
+  CriticalCityRiskRanking,
   FilterEfficiencyLog,
   FireSpot,
   NORDESTE_CENTER,
@@ -28,6 +29,7 @@ import {
   NordesteUF,
   SkeletonStabilityLog,
   SyncMetadata,
+  extractCriticalCitiesRanking,
   fetchSynchronizedFireData,
 } from './services/fireDataService';
 import { AppLogoEmblem } from './components/IosWeatherWidgets';
@@ -102,6 +104,7 @@ interface FireMonitorContextValue {
   currentFilterClicks: number;
   skeletonLogs: SkeletonStabilityLog[];
   filterLogs: FilterEfficiencyLog[];
+  criticalCitiesRanking: CriticalCityRiskRanking[];
   selectUF: (uf: NordesteUF | 'TODOS', countClick?: boolean) => void;
   selectMunicipality: (
     uf: NordesteUF,
@@ -484,6 +487,10 @@ export default function RootLayout() {
     });
   }, [spots, selectedUF, selectedMunicipality]);
 
+  const criticalCitiesRanking = useMemo(() => {
+    return extractCriticalCitiesRanking(spots);
+  }, [spots]);
+
   const contextValue = useMemo<FireMonitorContextValue>(
     () => ({
       spots,
@@ -500,6 +507,7 @@ export default function RootLayout() {
       currentFilterClicks,
       skeletonLogs,
       filterLogs,
+      criticalCitiesRanking,
       selectUF,
       selectMunicipality,
       selectSpotOnMap,
@@ -526,6 +534,7 @@ export default function RootLayout() {
       currentFilterClicks,
       skeletonLogs,
       filterLogs,
+      criticalCitiesRanking,
       selectUF,
       selectMunicipality,
       selectSpotOnMap,

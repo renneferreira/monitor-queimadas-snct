@@ -42,6 +42,7 @@ import {
   InstitutionalCreditsCard,
   StateThermalRangeBars,
 } from '../components/IosWeatherWidgets';
+import { InlineGoogleSatelliteCard } from '../components/InlineGoogleSatelliteCard';
 import {
   DURATION_BASE,
   RISK_LEVELS,
@@ -167,6 +168,7 @@ export default function MapaNordesteScreen() {
   const [clickedClusterId, setClickedClusterId] = useState<string | null>(null);
   const [showTechnicalDetails, setShowTechnicalDetails] =
     useState<boolean>(false);
+  const [showSatelliteInline, setShowSatelliteInline] = useState<boolean>(true);
 
   // Clima e Nível de Risco Regional (Temperatura °C + Risco com Cor + Ícone + Texto)
   const regionalClimate = useMemo(
@@ -959,7 +961,35 @@ export default function MapaNordesteScreen() {
         </View>
       </View>
 
-      {/* 3. GRÁFICO DE CURVA HORÁRIA COM GRADIENTE (ESTILO APP TEMPO iOS) */}
+      {/* 3. CARD INLINE COM GOOGLE MAPS EMBUTIDO (SATÉLITE REAL) */}
+      {activeSpot && showSatelliteInline ? (
+        <InlineGoogleSatelliteCard
+          municipality={activeSpot.municipality}
+          uf={activeSpot.uf}
+          latitude={activeSpot.latitude}
+          longitude={activeSpot.longitude}
+          riskLabel={
+            activeSpot.severity === 'critico'
+              ? 'Risco Crítico'
+              : activeSpot.severity === 'alto'
+              ? 'Risco Alto'
+              : 'Risco Médio'
+          }
+          riskColor={
+            activeSpot.severity === 'critico'
+              ? '#FF453A'
+              : activeSpot.severity === 'alto'
+              ? '#FF9F0A'
+              : '#FFD60A'
+          }
+          frpMW={activeSpot.frpMW}
+          spotCount={filteredSpots.length}
+          reduceMotion={reduceMotion}
+          onClose={() => setShowSatelliteInline(false)}
+        />
+      ) : null}
+
+      {/* 4. GRÁFICO DE CURVA HORÁRIA COM GRADIENTE (ESTILO APP TEMPO iOS) */}
       <FrpOrbitalAreaChart
         spots={filteredSpots.length > 0 ? filteredSpots : spots}
       />
