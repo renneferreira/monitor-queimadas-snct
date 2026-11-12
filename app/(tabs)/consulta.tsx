@@ -43,7 +43,15 @@ export default function ConsultaSeletivaScreen() {
   // Padrão inicial em PI (Piauí — sede do IFPI Campus Floriano) quando UF está em TODOS
   const activeUF: NordesteUF = selectedUF === 'TODOS' ? 'PI' : selectedUF;
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [debouncedQuery, setDebouncedQuery] = useState<string>('');
   const [showAllCities, setShowAllCities] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 180);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
   const [ibgeList, setIbgeList] = useState<IBGEMunicipality[]>([]);
   const [isLoadingIBGE, setIsLoadingIBGE] = useState<boolean>(false);
   const [ibgeLiveSource, setIbgeLiveSource] = useState<boolean>(true);
@@ -85,7 +93,7 @@ export default function ConsultaSeletivaScreen() {
   }, [spots, activeUF]);
 
   const filteredMunicipalities = useMemo(() => {
-    const q = normalizeSearchText(searchQuery);
+    const q = normalizeSearchText(debouncedQuery);
     const matches = ibgeList.filter((m) => {
       if (!q) return true;
       return normalizeSearchText(m.nome).includes(q);
@@ -804,7 +812,7 @@ const styles = StyleSheet.create({
   },
   cityIbgeText: {
     fontFamily: APPLE_CALM_THEME.fonts.mono,
-    fontSize: 11,
+    fontSize: 12,
     color: APPLE_CALM_THEME.colors.textMuted,
     marginTop: 2,
   },

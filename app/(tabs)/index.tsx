@@ -94,7 +94,10 @@ function useSmoothMapCamera(
       return;
     }
 
-    const startTime = performance.now();
+    const startTime =
+      typeof performance !== 'undefined' && performance.now
+        ? performance.now()
+        : Date.now();
 
     const step = (now: number) => {
       const elapsed = now - startTime;
@@ -375,7 +378,7 @@ export default function MapaNordesteScreen() {
                 <View style={styles.heroUnitCol}>
                   <Text style={styles.heroUnitTitle}>FOCOS ATIVOS</Text>
                   <Text style={styles.heroUnitSub}>
-                    Pico: {weatherHeroSummary.maxFrp.toFixed(0)} MW
+                    Calor: {weatherHeroSummary.maxFrp.toFixed(0)} MW (Potência do Fogo)
                   </Text>
                 </View>
               </View>
@@ -695,7 +698,7 @@ export default function MapaNordesteScreen() {
                     key={`label-${st.uf}`}
                     x={mesh.labelLng}
                     y={-mesh.labelLat}
-                    fill={isFocused ? '#64D2FF' : 'rgba(203, 213, 225, 0.58)'}
+                    fill={isFocused ? '#64D2FF' : 'rgba(241, 245, 249, 0.88)'}
                     fontSize={0.48 / Math.sqrt(smoothCamera.zoom)}
                     fontWeight="700"
                     textAnchor="middle"
@@ -1541,14 +1544,17 @@ const styles = StyleSheet.create({
     color: '#FFD60A',
   },
   selectedCityMapsBtn: {
+    minHeight: 44,
+    minWidth: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(48, 209, 88, 0.16)',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(48, 209, 88, 0.20)',
     borderWidth: 1,
-    borderColor: 'rgba(48, 209, 88, 0.38)',
-    paddingHorizontal: 9,
-    paddingVertical: 3,
+    borderColor: 'rgba(48, 209, 88, 0.45)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 999,
   },
   selectedCityMapsBtnText: {

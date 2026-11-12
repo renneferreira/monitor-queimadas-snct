@@ -1,9 +1,11 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
+  Alert,
   Linking,
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -54,6 +56,16 @@ export default function SobreTransparenciaScreen() {
       URL.revokeObjectURL(url);
       setExportFeedback('Arquivo CSV exportado com sucesso para o Artigo SNCT!');
       setTimeout(() => setExportFeedback(null), 4000);
+    } else {
+      Share.share({
+        title: 'Telemetria Científica SNCT - Radar Fogo',
+        message: csvContent,
+      }).then(() => {
+        setExportFeedback('Dados de telemetria prontos para envio ou compartilhamento!');
+        setTimeout(() => setExportFeedback(null), 4000);
+      }).catch(() => {
+        Alert.alert('Exportação', 'Abra o app no navegador web para baixar o arquivo .csv direto.');
+      });
     }
   }, [filterLogs, skeletonLogs]);
 
@@ -292,8 +304,8 @@ export default function SobreTransparenciaScreen() {
             <Text style={styles.kpiLabel}>ESTABILIDADE DE TELA (SEM SALTOS)</Text>
             <Text style={styles.kpiValueBlue}>100% Estável</Text>
             <Text style={styles.kpiSub}>
-              Moldura visual preparada em ~{scientificStats.avgSkeletonLeadMs}{' '}
-              ms antes dos dados chegarem (CLS {scientificStats.clsScore})
+              Moldura visual preparada em ~{scientificStats.avgSkeletonLeadMs} ms
+              antes dos dados chegarem — Estabilidade total de tela (Deslocamento visual / CLS: {scientificStats.clsScore})
             </Text>
           </View>
         </View>

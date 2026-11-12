@@ -56,7 +56,7 @@ O **Radar Fogo** é um *Progressive Web App* (PWA) construído em **React Native
     │   └── sobre.tsx                    # Sobre o App, Preferências de Acessibilidade, Fontes e Créditos
     └── services/
         ├── fireDataService.ts           # Integração INPE (10m), CENSIPAM (30m), IBGE e Google Maps
-        └── neStatesGeoPaths.ts          # Malha cartográfica oficial do IBGE dos 9 estados do Nordeste
+        └── ibgeNordesteGeoMesh.ts       # Malha cartográfica oficial do IBGE dos 9 estados do Nordeste
 ```
 
 ---

@@ -520,8 +520,8 @@ export function FrpOrbitalAreaChart({ spots }: FrpOrbitalCurveProps) {
       </View>
 
       <Text style={styles.widgetSubdesc}>
-        Picos térmicos em Megawatts (MW) captados nas últimas passagens dos
-        satélites INPE (10 min) e CENSIPAM (30 min).
+        Potência Radiativa do Fogo (FRP em Megawatts - MW): intensidade real do calor emitido pelas queimadas,
+        captada pelos satélites do INPE (ciclo de 10 min) e CENSIPAM (~30 min).
       </Text>
 
       <View style={styles.chartSvgContainer}>

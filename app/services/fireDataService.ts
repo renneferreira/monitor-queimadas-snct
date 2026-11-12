@@ -93,6 +93,7 @@ export interface SyncMetadata {
   totalSpotsNordeste: number;
   inpeLatencyMinutes: 10;
   censipamLatencyMinutes: 30;
+  dataMode: 'live' | 'demo_validated';
 }
 
 export const NORDESTE_CENTER = {
@@ -744,6 +745,7 @@ export async function fetchSynchronizedFireData(): Promise<{
       totalSpotsNordeste: spots.length,
       inpeLatencyMinutes: 10,
       censipamLatencyMinutes: 30,
+      dataMode: 'demo_validated',
     },
   };
 }

@@ -734,8 +734,8 @@ const styles = StyleSheet.create({
   },
   transparencySourceText: {
     fontFamily: APPLE_CALM_THEME.fonts.body,
-    fontSize: 10.5,
-    fontWeight: '400',
+    fontSize: 12,
+    fontWeight: '500',
     color: APPLE_CALM_THEME.colors.textMuted,
   },
   headerActionsRow: {
